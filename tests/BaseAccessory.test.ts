@@ -104,6 +104,16 @@ describe('BaseAccessory', () => {
     expect(base._getServiceByUUIDAndSubType(serviceType, 'switch 1')).toBe(service)
   })
 
+  it('uses Homebridge 2 getServiceById for cached services', () => {
+    const { base, accessory } = createBaseAccessory()
+    const serviceType = { UUID: 'switch-uuid' }
+    const service = accessory.addService(serviceType, 'Switch 1', 'switch 1')
+    accessory.getServiceById = vi.fn().mockReturnValue(service)
+
+    expect(base._getServiceByUUIDAndSubType(serviceType, 'switch 1')).toBe(service)
+    expect(accessory.getServiceById).toHaveBeenCalledWith(serviceType, 'switch 1')
+  })
+
   describe('_getDividedState', () => {
     let base: BaseAccessory
 

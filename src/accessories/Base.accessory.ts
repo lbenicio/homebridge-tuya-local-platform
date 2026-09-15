@@ -67,6 +67,9 @@ class BaseAccessory {
   }
 
   _getServiceByUUIDAndSubType(serviceType: any, subtype: string): any {
+    const modernGetter = (this.accessory as any).getServiceById
+    if (typeof modernGetter === 'function') return modernGetter.call(this.accessory, serviceType, subtype)
+
     const legacyGetter = (this.accessory as any).getServiceByUUIDAndSubType
     if (typeof legacyGetter === 'function') return legacyGetter.call(this.accessory, serviceType, subtype)
 
