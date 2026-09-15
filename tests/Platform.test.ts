@@ -110,6 +110,7 @@ describe('Platform Registration', () => {
       },
       hap: {
         Characteristic: MockCharacteristic,
+        Perms: { WRITE: 'pw', NOTIFY: 'ev', READ: 'pr' },
         Service: {
           AccessoryInformation: { UUID: 'AccessoryInformation' },
         },
@@ -260,6 +261,40 @@ describe('Platform Registration', () => {
     expect(api.unregisterPlatformAccessories).toHaveBeenCalledWith('TuyaLocalPlatform', 'TuyaLocalPlatform', [
       accessory,
     ])
+  })
+
+  it('should configure cached accessories with modern HAP permissions', () => {
+    registerFn(mockHomebridge)
+
+    const log = Object.assign(vi.fn(), { info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+    const config = { devices: [{ id: 'abc123', key: 'key1', type: 'outlet' }] }
+    const api = {
+      hap: mockHomebridge.hap,
+      on: vi.fn(),
+      registerPlatformAccessories: vi.fn(),
+      unregisterPlatformAccessories: vi.fn(),
+    }
+
+    const platform = new registeredPlatform(log, config, api)
+    const accessory = new mockHomebridge.platformAccessory(
+      'Cached Device',
+      'uuid-homebridge-tuya-local-platform:abc123',
+      mockHomebridge.hap.Categories.OUTLET,
+    )
+    accessory.services.push({
+      UUID: 'service-uuid',
+      displayName: 'Service',
+      characteristics: [
+        {
+          displayName: 'Characteristic',
+          props: { perms: ['pr', 'pw', 'ev'] },
+          updateValue: vi.fn(),
+        },
+      ],
+    })
+
+    expect(() => platform.configureAccessory(accessory)).not.toThrow()
+    expect(platform.cachedAccessories.get(accessory.UUID)).toBe(accessory)
   })
 })
 

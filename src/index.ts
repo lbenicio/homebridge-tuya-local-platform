@@ -66,7 +66,7 @@ const CLASS_DEF: ClassDefMap = {
   doorsensor: ContactSensorAccessory,
 }
 
-let Characteristic: any, PlatformAccessory: any, Service: any, Categories: any, UUID: any
+let Characteristic: any, PlatformAccessory: any, Service: any, Categories: any, Perms: any, UUID: any
 
 module.exports = function (homebridge: any): void {
   ;({
@@ -78,6 +78,7 @@ module.exports = function (homebridge: any): void {
       // Accessory.Categories is undefined there and crashes addAccessory with:
       //   TypeError: Cannot read properties of undefined (reading 'FAN')
       Categories,
+      Perms,
       uuid: UUID,
     },
   } = homebridge)
@@ -252,6 +253,8 @@ class TuyaLocalPlatform {
   configureAccessory(accessory: any): void {
     if (accessory instanceof PlatformAccessory && this._expectedUUIDs && this._expectedUUIDs.includes(accessory.UUID)) {
       this.cachedAccessories.set(accessory.UUID, accessory)
+      const writePermission = Perms?.WRITE || Characteristic?.Perms?.WRITE
+      const notifyPermission = Perms?.NOTIFY || Characteristic?.Perms?.NOTIFY
       accessory.services.forEach((service: any) => {
         if (service.UUID === Service.AccessoryInformation.UUID) return
         service.characteristics.some((characteristic: any) => {
@@ -260,8 +263,8 @@ class TuyaLocalPlatform {
             !Array.isArray(characteristic.props.perms) ||
             characteristic.props.perms.length !== 3 ||
             !(
-              characteristic.props.perms.includes(Characteristic.Perms.WRITE) &&
-              characteristic.props.perms.includes(Characteristic.Perms.NOTIFY)
+              characteristic.props.perms.includes(writePermission) &&
+              characteristic.props.perms.includes(notifyPermission)
             )
           )
             return
