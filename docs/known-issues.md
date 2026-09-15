@@ -2,7 +2,7 @@
 
 ## Unsupported Devices
 
-- **Sensor-only devices** (motion sensors, door/window sensors) are not supported. These devices do not respond reliably to LAN polling and typically require cloud push notifications.
+- **Battery-powered sensor reachability** varies by model. This fork exposes local temperature/humidity and contact DPs when the device accepts Tuya LAN connections, but sleeping or gateway-only sensors still cannot be read without cloud or gateway support.
 
 ## Protocol Limitations
 

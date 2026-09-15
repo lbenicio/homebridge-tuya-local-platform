@@ -3,6 +3,7 @@ import {
   AirConditionerAccessory,
   AirPurifierAccessory,
   CircuitBreakerMonitorAccessory,
+  ContactSensorAccessory,
   ConvectorAccessory,
   CustomMultiOutletAccessory,
   DehumidifierAccessory,
@@ -22,6 +23,7 @@ import {
   SimpleLightAccessory,
   SwitchAccessory,
   TWLightAccessory,
+  TemperatureHumiditySensorAccessory,
   ValveAccessory,
 } from '../src/accessories'
 
@@ -60,6 +62,8 @@ describe('Accessory categories', () => {
     expect(SimpleHeaterAccessory.getCategory(Categories)).toBe(Categories.AIR_HEATER)
     expect(MappedHeatPumpHeaterAccessory.getCategory(Categories)).toBe(Categories.AIR_HEATER)
     expect(CircuitBreakerMonitorAccessory.getCategory(Categories)).toBe(Categories.SENSOR)
+    expect(TemperatureHumiditySensorAccessory.getCategory(Categories)).toBe(Categories.SENSOR)
+    expect(ContactSensorAccessory.getCategory(Categories)).toBe(Categories.SENSOR)
     expect(SwitchAccessory.getCategory(Categories)).toBe(Categories.SWITCH)
     expect(SimpleFanAccessory.getCategory(Categories)).toBe(Categories.FAN)
     expect(SimpleFanLightAccessory.getCategory(Categories)).toBe(Categories.FAN)

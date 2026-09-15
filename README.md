@@ -93,7 +93,7 @@ Tuya's cloud relies on remote servers. Any outage, policy change, or internet di
 ## Features
 
 - **Local LAN Control:** Communicates directly with devices; no cloud, no internet dependency
-- **23 Device Types:** Outlets, lights, dimmers, fans, sensors, climate control, and more
+- **25 Device Types:** Outlets, lights, dimmers, fans, sensors, climate control, and more
 - **Adaptive Lighting:** HomeKit Adaptive Lighting on compatible tunable white and RGBTW accessories
 - **Energy Monitoring:** Real-time voltage, current, and power readings on supported devices
 - **Automatic Discovery:** UDP broadcast discovery finds devices on your local network automatically
@@ -105,11 +105,13 @@ Tuya's cloud relies on remote servers. Any outage, policy change, or internet di
 
 ## Supported Devices
 
+<!-- prettier-ignore -->
 | Device                                |        Type key         |
 | :------------------------------------ | :---------------------: |
 | Air Conditioner                       |    `AirConditioner`     |
 | Air Purifier                          |      `AirPurifier`      |
 | Circuit Breaker Monitor _(read-only)_ | `CircuitBreakerMonitor` |
+| Contact / Door Sensor                 | `ContactSensor`         |
 | Heat Convector                        |       `Convector`       |
 | Non-sequential Power Strip            |   `CustomMultiOutlet`   |
 | Dehumidifier                          |     `Dehumidifier`      |
@@ -127,6 +129,7 @@ Tuya's cloud relies on remote servers. Any outage, policy change, or internet di
 | Simple Dimmer 2                       |     `SimpleDimmer2`     |
 | Simple Heater                         |     `SimpleHeater`      |
 | Simple Light Bulb                     |      `SimpleLight`      |
+| Temperature and Humidity Sensor       | `TemperatureHumiditySensor` |
 | Multi-Switch                          |        `Switch`         |
 | Tunable White Light Bulb              |        `TWLight`        |
 | Water Valve                           |      `WaterValve`       |

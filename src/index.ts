@@ -26,6 +26,8 @@ import {
   SwitchAccessory,
   ValveAccessory,
   OilDiffuserAccessory,
+  TemperatureHumiditySensorAccessory,
+  ContactSensorAccessory,
 } from './accessories'
 
 import type { ClassDefMap, TuyaDeviceConfig, TuyaPlatformConfig } from './types'
@@ -57,6 +59,11 @@ const CLASS_DEF: ClassDefMap = {
   fanlight: SimpleFanLightAccessory,
   watervalve: ValveAccessory,
   oildiffuser: OilDiffuserAccessory,
+  temperaturehumiditysensor: TemperatureHumiditySensorAccessory,
+  temperaturehumidity: TemperatureHumiditySensorAccessory,
+  thermometer: TemperatureHumiditySensorAccessory,
+  contactsensor: ContactSensorAccessory,
+  doorsensor: ContactSensorAccessory,
 }
 
 let Characteristic: any, PlatformAccessory: any, Service: any, Categories: any, UUID: any

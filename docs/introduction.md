@@ -7,7 +7,7 @@ Control Tuya-based smart devices locally over LAN through Apple HomeKit.
 ## Features
 
 - **Local LAN control** — no Tuya cloud needed after initial key extraction
-- **Wide device support** — 23 device type handlers covering most Tuya-based products
+- **Wide device support** — 25 device type handlers covering most Tuya-based products
 - **Apple HomeKit integration** — full support via Homebridge
 - **Adaptive Lighting** — supported on compatible light accessories
 - **Energy monitoring** — power, voltage, and current readings on supported outlets
@@ -15,11 +15,13 @@ Control Tuya-based smart devices locally over LAN through Apple HomeKit.
 
 ## Supported Device Types
 
+<!-- prettier-ignore -->
 | Type ID                 | Device Category    | Description                                               |
 | ----------------------- | ------------------ | --------------------------------------------------------- |
 | `AirConditioner`        | Climate            | Heat/cool/auto modes with fan speed control               |
 | `AirPurifier`           | Climate            | Purifier with fan speed (Breville, Proscenic, Siguro)     |
 | `CircuitBreakerMonitor` | Energy             | Read-only circuit breaker telemetry and safety monitoring |
+| `ContactSensor`         | Sensor             | Local open/closed contact or door sensor                 |
 | `Convector`             | Climate            | Heater/cooler with LOW/HIGH fan speed                     |
 | `CustomMultiOutlet`     | Outlet             | Config-driven multi-outlet with custom DP mapping         |
 | `Dehumidifier`          | Climate            | Dehumidifier with target humidity and fan speed           |
@@ -37,6 +39,7 @@ Control Tuya-based smart devices locally over LAN through Apple HomeKit.
 | `SimpleDimmer2`         | Light              | Alternative dimmer (DP 3 brightness)                      |
 | `SimpleHeater`          | Climate            | Basic heater/cooler                                       |
 | `SimpleLight`           | Light              | Basic on/off lightbulb                                    |
+| `TemperatureHumiditySensor` | Sensor          | Local temperature and relative humidity readings         |
 | `Switch`                | Switch             | Multi-switch with debounced power                         |
 | `TWLight`               | Light              | Tunable white with adaptive lighting                      |
 | `WaterValve`            | Valve              | Valve with timer support                                  |

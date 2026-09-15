@@ -102,6 +102,14 @@
                 {
                   "title": "Circuit Breaker Monitor (Read-Only)",
                   "enum": ["CircuitBreakerMonitor"]
+                },
+                {
+                  "title": "Temperature and Humidity Sensor",
+                  "enum": ["TemperatureHumiditySensor"]
+                },
+                {
+                  "title": "Contact / Door Sensor",
+                  "enum": ["ContactSensor"]
                 }
               ]
             },
@@ -686,10 +694,46 @@
             "dpTemperature": {
               "type": "integer",
               "placeholder": "103",
-              "title": "DP: Device Temperature",
-              "description": "Data point for circuit breaker temperature sensor (default: 103).",
+              "title": "DP: Temperature",
+              "description": "Data point for the temperature reading.",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['CircuitBreakerMonitor'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['CircuitBreakerMonitor','TemperatureHumiditySensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpHumidity": {
+              "type": "integer",
+              "placeholder": "2",
+              "title": "DP: Humidity",
+              "description": "Data point for the relative humidity reading (default: 2).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TemperatureHumiditySensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpBattery": {
+              "type": "integer",
+              "placeholder": "2",
+              "title": "DP: Battery",
+              "description": "Optional data point for battery percentage. Set to 0 to hide the battery service.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TemperatureHumiditySensor','ContactSensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "humidityDivisor": {
+              "type": "integer",
+              "placeholder": "1",
+              "title": "Humidity Divisor",
+              "description": "Divisor for humidity values, usually 1 or 10.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TemperatureHumiditySensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpContact": {
+              "type": "integer",
+              "placeholder": "1",
+              "title": "DP: Contact State",
+              "description": "Data point for the open/closed contact state (default: 1).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['ContactSensor'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpLeakageCurrent": {
@@ -741,9 +785,9 @@
               "type": "integer",
               "placeholder": "1",
               "title": "Temperature Divisor",
-              "description": "Divisor for temperature value (default: 1).",
+              "description": "Divisor for temperature values, usually 1 or 10.",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['CircuitBreakerMonitor'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['CircuitBreakerMonitor','TemperatureHumiditySensor'].includes(model.devices[arrayIndices].type);"
               }
             },
             "energyDivisor": {
@@ -823,7 +867,7 @@
             "flipState": {
               "type": "boolean",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['GarageDoor','SimpleBlinds'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['GarageDoor','SimpleBlinds','ContactSensor'].includes(model.devices[arrayIndices].type);"
               }
             },
             "timeToOpen": {

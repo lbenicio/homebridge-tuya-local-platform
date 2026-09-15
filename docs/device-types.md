@@ -6,11 +6,13 @@ If you are looking for verified configurations for your specific device, see the
 
 ## Device Type Reference
 
+<!-- prettier-ignore -->
 | Device                               |          Type           | Notes                                                                                                   |
 | :----------------------------------- | :---------------------: | :------------------------------------------------------------------------------------------------------ |
 | Air Conditioner                      |    `AirConditioner`     | Cooling and heating devices ([details](#air-conditioners))                                              |
 | Air Purifier                         |      `AirPurifier`      | Purifiers with fan speed control ([details](#air-purifiers))                                            |
 | Circuit Breaker Monitor              | `CircuitBreakerMonitor` | **Read-only** energy and safety monitoring ([details](#circuit-breaker-monitors))                       |
+| Contact / Door Sensor                | `ContactSensor`         | Open/closed state with optional battery reporting ([details](#contact-door-sensors))                   |
 | Heat Convector                       |       `Convector`       | Heating panels ([details](#heat-convectors))                                                            |
 | Non-sequential Power Strip           |   `CustomMultiOutlet`   | Power strips with non-sequential data-points per outlet ([details](#non-sequential-power-strips))       |
 | Dehumidifier                         |     `Dehumidifier`      | Humidity control with fan speed ([details](#dehumidifiers))                                             |
@@ -28,6 +30,7 @@ If you are looking for verified configurations for your specific device, see the
 | Simple Dimmer 2                      |     `SimpleDimmer2`     | Alternative dimmer (DP 3 brightness) ([details](#simple-dimmer-2))                                      |
 | Simple Heater                        |     `SimpleHeater`      | Heating solutions with only temperature control ([details](#simple-heaters))                            |
 | Simple Light Bulb                    |      `SimpleLight`      | Light bulbs that just turn on and off                                                                   |
+| Temperature and Humidity Sensor      | `TemperatureHumiditySensor` | Local temperature, humidity, and optional battery readings ([details](#temperature-and-humidity-sensors)) |
 | Multi-Switch                         |        `Switch`         | Multi-switch with debounced power ([details](#multi-switch-accessories))                                |
 | Tunable White Light Bulb             |        `TWLight`        | Bulbs with tunable white and dimming functionality ([details](#tunable-white-light-bulbs))              |
 | Water Valve                          |      `WaterValve`       | Smart valves with timer support ([details](#water-valves))                                              |
@@ -703,6 +706,52 @@ The breaker switch (DP 16) is **never exposed to HomeKit** for safety reasons. T
 - **TemperatureSensor** — Device temperature with optional KilowattHours energy characteristic
 - **LeakSensor** — Leakage current alarm (triggers when current ≥ threshold)
 - **ContactSensor** — Fault alarm (Closed = no fault, Open = fault detected)
+
+### Temperature and Humidity Sensors
+
+Local sensors that report temperature and relative humidity. The default mapping uses DP 1 for temperature and DP 2 for humidity; configure the DP IDs when the device uses a different layout.
+
+```json5
+{
+  name: 'T&H Sensor',
+  type: 'TemperatureHumiditySensor',
+  id: '032000123456789abcde',
+  key: '0123456789abcdef',
+
+  dpTemperature: 1,
+  dpHumidity: 2,
+  temperatureDivisor: 1,
+  humidityDivisor: 1,
+
+  /* Optional numeric battery percentage DP */
+  dpBattery: 3,
+}
+```
+
+**Exposed HomeKit Services:**
+
+- **TemperatureSensor** — Current temperature in °C
+- **HumiditySensor** — Current relative humidity percentage
+- **BatteryService** — Optional battery level and low-battery status
+
+### Contact / Door Sensors
+
+Local contact sensors map the Tuya open/closed DP to HomeKit’s contact state. The default mapping uses DP 1 for contact state and DP 2 for battery percentage.
+
+```json5
+{
+  name: 'Kitchen Door',
+  type: 'ContactSensor',
+  id: '032000123456789abcde',
+  key: '0123456789abcdef',
+
+  dpContact: 1,
+  dpBattery: 2,
+  flipState: false,
+}
+```
+
+Set `dpBattery` to `0` when the device has no battery DP. Set `flipState` to `true` if the device reports the opposite open/closed meaning.
 
 ### Mapped Heat Pump Heaters
 
