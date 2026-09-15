@@ -80,11 +80,14 @@ class TuyaAccessory extends EventEmitter {
     const version = parseFloat(this.context.version || '3.1')
     const handlerName =
       version < 3.2 ? '_msgHandler_3_1' : this.context.version === '3.4' ? '_msgHandler_3_4' : '_msgHandler_3_3'
-    this._msgQueue = async.queue(this[handlerName].bind(this) as async.AsyncWorker<MessageTask>, 1)
-    this._msgQueue.error((err: Error) => {
-      this.log.warn(`Protocol error from ${this.context.name}: ${err.message}`)
-      this._socket.emit('error', err as NodeJS.ErrnoException)
-    })
+    this._msgQueue = async.queue((task: MessageTask, callback: () => void) => {
+      try {
+        this[handlerName](task, callback)
+      } catch (err) {
+        this._handleProtocolError(err)
+        callback()
+      }
+    }, 1)
 
     if (version >= 3.2) {
       this.context.pingGap = Math.min(this.context.pingGap || 9, 9)
@@ -268,6 +271,12 @@ class TuyaAccessory extends EventEmitter {
       this.log.debug(`decrementing this._connectionAttempts, currently ${this._connectionAttempts}`)
       this._connectionAttempts--
     }, 10000)
+  }
+
+  private _handleProtocolError(err: unknown): void {
+    const error = err instanceof Error ? err : new Error(String(err))
+    this.log.warn(`Protocol error from ${this.context.name}: ${error.message}`)
+    this._socket.emit('error', error as NodeJS.ErrnoException)
   }
 
   private _msgHandler_3_1(task: MessageTask, callback: () => void): void {
