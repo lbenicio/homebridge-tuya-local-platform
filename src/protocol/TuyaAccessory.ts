@@ -81,6 +81,10 @@ class TuyaAccessory extends EventEmitter {
     const handlerName =
       version < 3.2 ? '_msgHandler_3_1' : this.context.version === '3.4' ? '_msgHandler_3_4' : '_msgHandler_3_3'
     this._msgQueue = async.queue(this[handlerName].bind(this) as async.AsyncWorker<MessageTask>, 1)
+    this._msgQueue.error((err: Error) => {
+      this.log.warn(`Protocol error from ${this.context.name}: ${err.message}`)
+      this._socket.emit('error', err as NodeJS.ErrnoException)
+    })
 
     if (version >= 3.2) {
       this.context.pingGap = Math.min(this.context.pingGap || 9, 9)
