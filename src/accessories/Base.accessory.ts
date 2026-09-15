@@ -66,6 +66,14 @@ class BaseAccessory {
     }
   }
 
+  _getServiceByUUIDAndSubType(serviceType: any, subtype: string): any {
+    const legacyGetter = (this.accessory as any).getServiceByUUIDAndSubType
+    if (typeof legacyGetter === 'function') return legacyGetter.call(this.accessory, serviceType, subtype)
+
+    const uuid = typeof serviceType === 'object' ? serviceType.UUID : serviceType
+    return this.accessory.services.find((service: any) => service.UUID === uuid && service.subtype === subtype)
+  }
+
   _removeCharacteristic(service: HAPService, characteristicType: WithUUID<new () => HAPCharacteristic>): void {
     if (!service || !characteristicType || !(characteristicType as any).UUID) return
 

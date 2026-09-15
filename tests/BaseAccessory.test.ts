@@ -95,6 +95,15 @@ describe('BaseAccessory', () => {
     })
   })
 
+  it('finds services on Homebridge 2 accessories without the removed subtype helper', () => {
+    const { base, accessory } = createBaseAccessory()
+    const serviceType = { UUID: 'switch-uuid' }
+    const service = accessory.addService(serviceType, 'Switch 1', 'switch 1')
+    delete accessory.getServiceByUUIDAndSubType
+
+    expect(base._getServiceByUUIDAndSubType(serviceType, 'switch 1')).toBe(service)
+  })
+
   describe('_getDividedState', () => {
     let base: BaseAccessory
 
