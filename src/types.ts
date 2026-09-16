@@ -39,6 +39,7 @@ export enum TuyaProtocolVersion {
   V3_1 = '3.1',
   V3_3 = '3.3',
   V3_4 = '3.4',
+  V3_5 = '3.5',
 }
 
 export enum TuyaCommand {
@@ -56,9 +57,15 @@ export interface TuyaDeviceConfig {
   id: string
   key: string
   ip?: string
+  parentId?: string
+  gatewayId?: string
+  cid?: string
+  nodeId?: string
   name?: string
   type: string
   version?: string
+  initialState?: DPSState
+  useCachedState?: boolean
   fake?: boolean
   disabled?: boolean
   manufacturer?: string

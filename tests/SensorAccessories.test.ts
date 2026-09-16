@@ -50,6 +50,31 @@ describe('TemperatureHumiditySensorAccessory', () => {
     expect(sensor._getBatteryLevel('middle')).toBe(50)
     expect(sensor._getBatteryLevel('low')).toBe(10)
   })
+
+  it('maps CO readings using the configured divisor', () => {
+    const { platform } = createPlatform()
+    const device = createMockTuyaDevice({ type: 'temperaturehumiditysensor' } as any)
+    const accessory = createMockPlatformAccessory({ name: 'CO Sensor' })
+    const sensor = new TemperatureHumiditySensorAccessory(platform, accessory, device, false)
+
+    sensor.dpCarbonMonoxide = '3'
+    sensor.carbonMonoxideDivisor = 10
+
+    expect(sensor._getCarbonMonoxideLevel(25)).toBe(2.5)
+    expect(sensor._getCarbonMonoxideLevel(0)).toBe(0)
+  })
+
+  it('creates the CO service before the first device report', () => {
+    const { platform } = createPlatform()
+    const device = createMockTuyaDevice({ type: 'temperaturehumiditysensor', dpCarbonMonoxide: 3 } as any)
+    const accessory = createMockPlatformAccessory({ name: 'CO Sensor' })
+    const sensor = new TemperatureHumiditySensorAccessory(platform, accessory, device, false)
+
+    sensor._registerPlatformAccessory()
+    sensor._registerCharacteristics({})
+
+    expect(accessory.services.some((service: any) => service.displayName === 'Test Device CO')).toBe(true)
+  })
 })
 
 describe('ContactSensorAccessory', () => {

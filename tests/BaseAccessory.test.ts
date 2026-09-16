@@ -300,6 +300,15 @@ describe('BaseAccessory', () => {
       expect(result).toBeInstanceOf(Error)
     })
 
+    it('should return configured cached state when offline', async () => {
+      device.connected = false
+      device.context.useCachedState = true
+      const result = await new Promise((resolve) => {
+        base.getState('1', (err, val) => resolve({ err, val }))
+      })
+      expect(result).toEqual({ err: null, val: true })
+    })
+
     it('should call device.update on setState', () => {
       device.state['1'] = false
       base.setState('1', true)

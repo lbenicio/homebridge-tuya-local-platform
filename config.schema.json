@@ -110,6 +110,18 @@
                 {
                   "title": "Contact / Door Sensor",
                   "enum": ["ContactSensor"]
+                },
+                {
+                  "title": "Infrared / RF Hub",
+                  "enum": ["InfraredHub"]
+                },
+                {
+                  "title": "Zigbee Wireless Switch",
+                  "enum": ["WirelessSwitch"]
+                },
+                {
+                  "title": "Zigbee Gateway",
+                  "enum": ["Gateway"]
                 }
               ]
             },
@@ -135,6 +147,24 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
             },
+            "initialState": {
+              "title": "Cached Initial DPS State",
+              "description": "Optional last-known numeric DPS values used when a sleeping device is offline. These values are not live.",
+              "type": "object",
+              "additionalProperties": true,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
+              }
+            },
+            "useCachedState": {
+              "title": "Use Cached State When Offline",
+              "description": "Return configured cached DPS values when the device cannot be reached.",
+              "type": "boolean",
+              "default": false,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].initialState;"
+              }
+            },
             "disabled": {
               "title": "Disabled",
               "description": "Skip this device entirely and remove it from HomeKit, without deleting its configuration. Useful for devices that are offline for long periods.",
@@ -149,6 +179,22 @@
               "type": "string",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
+              }
+            },
+            "parentId": {
+              "title": "Parent Gateway ID",
+              "description": "Tuya ID of the local gateway when this device is a Zigbee child. The child shares the gateway LAN connection.",
+              "type": "string",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
+              }
+            },
+            "cid": {
+              "title": "Zigbee Node ID",
+              "description": "Local gateway child identifier (also called cid or node_id). Required for gateway-routed devices.",
+              "type": "string",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].parentId;"
               }
             },
             "manufacturer": {
@@ -709,6 +755,33 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['TemperatureHumiditySensor'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "dpCarbonMonoxide": {
+              "type": "integer",
+              "placeholder": "3",
+              "title": "DP: Carbon Monoxide",
+              "description": "Optional data point for CO concentration in ppm. Leave empty to hide the CO service.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TemperatureHumiditySensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "carbonMonoxideDivisor": {
+              "type": "integer",
+              "placeholder": "1",
+              "title": "CO Divisor",
+              "description": "Divisor for CO values, usually 1 or 10.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TemperatureHumiditySensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "carbonMonoxideDetectionThreshold": {
+              "type": "number",
+              "placeholder": "0",
+              "title": "CO Detection Threshold",
+              "description": "CO ppm above this value is reported as detected (default: 0).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TemperatureHumiditySensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "dpBattery": {
               "type": "integer",
               "placeholder": "2",
@@ -734,6 +807,80 @@
               "description": "Data point for the open/closed contact state (default: 1).",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['ContactSensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpSend": {
+              "type": "integer",
+              "placeholder": "201",
+              "title": "DP: IR Send",
+              "description": "Data point containing the local IR/RF send JSON (default: 201).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['InfraredHub'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "remotes": {
+              "type": "array",
+              "title": "IR/RF Remotes",
+              "description": "Local learned buttons. Use hex for Tuya cloud learning_code values or base64 for local pulse data.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" },
+                        "hex": { "type": "string" },
+                        "base64": { "type": "string" },
+                        "type": { "type": "integer", "default": 0 }
+                      }
+                    }
+                  }
+                }
+              },
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['InfraredHub'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "switches": {
+              "type": "array",
+              "title": "Wireless Buttons",
+              "description": "Optional button names and numeric DPs for a directly addressable wireless switch.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "dp": { "type": "integer" }
+                }
+              },
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['WirelessSwitch'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "switchCount": {
+              "type": "integer",
+              "title": "Wireless Button Count",
+              "placeholder": "3",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['WirelessSwitch'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpAlarmSound": {
+              "type": "integer",
+              "title": "DP: Gateway Alarm Sound",
+              "description": "Optional numeric DP for enabling the gateway alarm sound switch.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Gateway'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpAlarmActive": {
+              "type": "integer",
+              "title": "DP: Gateway Alarm Active",
+              "description": "Optional numeric DP for exposing the gateway alarm state as a contact sensor.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Gateway'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpLeakageCurrent": {

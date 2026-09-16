@@ -26,6 +26,9 @@ export function createMockCharacteristic() {
     SerialNumber: 'serial',
     CurrentTemperature: 'current-temperature',
     CurrentRelativeHumidity: 'current-humidity',
+    CarbonMonoxideDetected: 'carbon-monoxide-detected',
+    CarbonMonoxideLevel: 'carbon-monoxide-level',
+    CarbonMonoxidePeakLevel: 'carbon-monoxide-peak-level',
     BatteryLevel: 'battery-level',
     StatusLowBattery: { BATTERY_LEVEL_LOW: 1, BATTERY_LEVEL_NORMAL: 0 },
     ChargingState: { NOT_CHARGING: 0 },
@@ -40,6 +43,7 @@ export function createMockCharacteristic() {
     RotationSpeed: 'rotation-speed',
     SwingMode: { UUID: 'swing-uuid' },
     WaterLevel: 'water-level',
+    ProgrammableSwitchEvent: { SINGLE_PRESS: 0, DOUBLE_PRESS: 1, LONG_PRESS: 2 },
   }
 }
 
@@ -51,6 +55,7 @@ export function createMockService() {
     AccessoryInformation: { UUID: 'accessory-info-uuid' },
     TemperatureSensor: { UUID: 'temp-sensor-uuid' },
     HumiditySensor: { UUID: 'humidity-sensor-uuid' },
+    CarbonMonoxideSensor: { UUID: 'carbon-monoxide-sensor-uuid' },
     HumidifierDehumidifier: { UUID: 'dehumidifier-uuid' },
     LockMechanism: { UUID: 'lock-uuid' },
     Fan: { UUID: 'fan-uuid' },
@@ -61,6 +66,7 @@ export function createMockService() {
     Outlet: { UUID: 'outlet-uuid' },
     Lightbulb: { UUID: 'lightbulb-uuid' },
     Switch: { UUID: 'switch-uuid' },
+    StatelessProgrammableSwitch: { UUID: 'stateless-switch-uuid' },
   }
 }
 

@@ -19,6 +19,7 @@ If you are looking for verified configurations for your specific device, see the
 | Smart Fan Regulator                  |          `Fan`          | Fan regulators with controllable speeds ([details](#smart-fan-regulators))                              |
 | Smart Fan with Light                 |       `FanLight`        | Fan with speeds, direction, and built-in light ([details](#smart-fan-with-light))                       |
 | Garage Door                          |      `GarageDoor`       | Smart garage doors or garage door openers ([details](#garage-doors))                                    |
+| Infrared / RF Hub                    |      `InfraredHub`      | Local learned IR/RF buttons through a physical hub ([details](#infrared-rf-hubs))                      |
 | Mapped Heat Pump Heater              | `MappedHeatPumpHeater`  | Heat pump with room-to-water temp mapping ([details](#mapped-heat-pump-heaters))                        |
 | Smart Power Strip                    |      `MultiOutlet`      | Power strips with sequential data-points for individual outlet control ([details](#smart-power-strips)) |
 | Oil Diffuser                         |      `OilDiffuser`      | Essential oil diffuser with humidifier and RGB light ([details](#oil-diffusers))                        |
@@ -34,6 +35,8 @@ If you are looking for verified configurations for your specific device, see the
 | Multi-Switch                         |        `Switch`         | Multi-switch with debounced power ([details](#multi-switch-accessories))                                |
 | Tunable White Light Bulb             |        `TWLight`        | Bulbs with tunable white and dimming functionality ([details](#tunable-white-light-bulbs))              |
 | Water Valve                          |      `WaterValve`       | Smart valves with timer support ([details](#water-valves))                                              |
+| Wireless Zigbee Switch               |    `WirelessSwitch`    | Directly addressable button events ([details](#wireless-switches))                                      |
+| Zigbee Gateway                       |       `Gateway`        | Optional alarm sound and alarm-state mappings ([details](#zigbee-gateways))                             |
 
 ::: tip
 The `type` value is case-insensitive. `"SimpleLight"`, `"simplelight"`, and `"SIMPLELIGHT"` all work.
@@ -723,8 +726,12 @@ Local sensors that report temperature and relative humidity. The default mapping
   temperatureDivisor: 1,
   humidityDivisor: 1,
 
+  /* Optional carbon monoxide concentration DP in ppm */
+  dpCarbonMonoxide: 3,
+  carbonMonoxideDivisor: 1,
+
   /* Optional numeric battery percentage DP */
-  dpBattery: 3,
+  dpBattery: 4,
 }
 ```
 
@@ -732,6 +739,7 @@ Local sensors that report temperature and relative humidity. The default mapping
 
 - **TemperatureSensor** — Current temperature in °C
 - **HumiditySensor** — Current relative humidity percentage
+- **CarbonMonoxideSensor** — Optional CO concentration in ppm, peak level, and detected state
 - **BatteryService** — Optional battery level and low-battery status
 
 ### Contact / Door Sensors
@@ -831,6 +839,71 @@ Multi-switch accessories with debounced power switching to prevent rapid on/off 
 
 - Each switch appears as a separate accessory in HomeKit labeled `{name} 1`, `{name} 2`, etc.
 - Switch commands are debounced by 500ms to prevent rapid toggling issues.
+
+### Infrared / RF Hubs
+
+Configure the physical hub, not the virtual child remotes shown by Tuya cloud. Learned cloud `learning_code` values can be copied into `hex`; local pulse data can be supplied as `base64`.
+
+Cloud library remotes expose a cloud `key` and `key_id`, not a raw waveform. Those identifiers cannot be replayed by a cloud-free LAN client, so this plugin only exposes IR/RF buttons when a local `hex`, `base64`, or raw `learning_code` is configured. The physical hub can still be added and used for locally supplied codes.
+
+```json5
+{
+  name: 'IR/RF Hub',
+  type: 'InfraredHub',
+  id: '032000123456789abcde',
+  key: '0123456789abcdef',
+  ip: '192.168.3.20',
+  version: '3.5',
+  remotes: [
+    {
+      name: 'Living Room',
+      keys: [
+        { name: 'Power', hex: '<Tuya cloud learning_code>' },
+        { name: 'Volume Up', base64: '<local pulse data>' },
+      ],
+    },
+  ],
+}
+```
+
+Each configured button appears as a momentary switch. The plugin sends the command to the physical hub over LAN; Tuya cloud child-device IDs are not contacted.
+
+### Wireless Switches
+
+`WirelessSwitch` exposes button events from a directly addressable wireless switch or a Zigbee child routed through a gateway. Gateway children share the gateway's local key, IP, and LAN connection; add `parentId` and the child's `cid`/`nodeId`.
+
+```json5
+{
+  name: 'Hall Remote',
+  type: 'WirelessSwitch',
+  id: '032000123456789abcde',
+  key: '0123456789abcdef',
+  ip: '192.168.3.21',
+  switches: [
+    { name: 'Button 1', dp: 1 },
+    { name: 'Button 2', dp: 2 },
+    { name: 'Button 3', dp: 3 },
+  ],
+}
+```
+
+For a gateway child, use the child's cloud device ID as `id`, the gateway local key as `key`, the gateway IP/version, and the gateway's local child identifier as `cid`.
+
+### Zigbee Gateways
+
+Gateways can expose alarm sound and alarm-active state when their numeric DPs are known. Factory reset is intentionally not exposed to HomeKit.
+
+```json5
+{
+  name: 'Zigbee Gateway',
+  type: 'Gateway',
+  id: '032000123456789abcde',
+  key: '0123456789abcdef',
+  ip: '192.168.3.22',
+  dpAlarmSound: 1,
+  dpAlarmActive: 2,
+}
+```
 
 ### Water Valves
 

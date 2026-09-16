@@ -2,7 +2,7 @@
 
 ## Unsupported Devices
 
-- **Battery-powered sensor reachability** varies by model. This fork exposes local temperature/humidity and contact DPs when the device accepts Tuya LAN connections, but sleeping or gateway-only sensors still cannot be read without cloud or gateway support.
+- **Battery-powered sensor reachability** varies by model. This fork exposes local temperature/humidity and contact DPs when the device accepts Tuya LAN connections. Sleeping sensors can use explicitly configured cached DPS values, but those values remain stale until refreshed.
 
 ## Protocol Limitations
 

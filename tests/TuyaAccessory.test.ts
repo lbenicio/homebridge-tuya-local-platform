@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'events'
+import crypto from 'crypto'
 import TuyaAccessory from '../src/protocol/TuyaAccessory'
 import { createMockLogger } from './helpers'
 
@@ -61,6 +62,20 @@ function buildFrame(cmd: number, payload: Buffer): Buffer {
   return buf
 }
 
+function build35Frame(cmd: number, payload: Buffer, key: string): Buffer {
+  const header = Buffer.alloc(18)
+  header.writeUInt32BE(0x00006699, 0)
+  header.writeUInt32BE(1, 6)
+  header.writeUInt32BE(cmd, 10)
+  header.writeUInt32BE(payload.length + 28, 14)
+
+  const iv = Buffer.from('123456789012')
+  const cipher = crypto.createCipheriv('aes-128-gcm', key, iv)
+  cipher.setAAD(header.slice(4, 18))
+  const encrypted = Buffer.concat([cipher.update(payload), cipher.final(), cipher.getAuthTag()])
+  return Buffer.concat([header, iv, encrypted, Buffer.from('00009966', 'hex')])
+}
+
 // ─── tests ────────────────────────────────────────────────────────────────────
 describe('TuyaAccessory', () => {
   let log: ReturnType<typeof createMockLogger>
@@ -116,6 +131,11 @@ describe('TuyaAccessory', () => {
     it('initialises an empty state object', () => {
       const acc = new TuyaAccessory(makeProps() as any)
       expect(acc.state).toEqual({})
+    })
+
+    it('initialises state from a configured cache', () => {
+      const acc = new TuyaAccessory(makeProps({ initialState: { '1': 26, '2': 68 } }) as any)
+      expect(acc.state).toEqual({ '1': 26, '2': 68 })
     })
   })
 
@@ -241,6 +261,34 @@ describe('TuyaAccessory', () => {
       const acc = new TuyaAccessory(makeProps({ connect: true, version: '3.1' }) as any)
       lastSocket.emit('connect')
       acc.update()
+      expect(lastSocket.write).toHaveBeenCalled()
+    })
+  })
+
+  describe('gateway children', () => {
+    it('shares the gateway connection and routes child state by cid', () => {
+      const parent = new TuyaAccessory(makeProps({ connect: true }) as any)
+      lastSocket.emit('connect')
+
+      const child = new TuyaAccessory(
+        makeProps({
+          id: 'child-001',
+          name: 'Child Device',
+          cid: 'node-001',
+          parent,
+          connect: false,
+        }) as any,
+      )
+      child._connect()
+
+      const change = vi.fn()
+      child.on('change', change)
+      ;(parent as any)._changePayload({ cid: 'node-001', dps: { '1': 'click' } })
+
+      expect(child.state).toEqual({ '1': 'click' })
+      expect(change).toHaveBeenCalledWith({ '1': 'click' }, { '1': 'click' })
+      expect(parent.state).toEqual({})
+      expect(child.update({ '1': true })).toBe(true)
       expect(lastSocket.write).toHaveBeenCalled()
     })
   })
@@ -400,6 +448,32 @@ describe('TuyaAccessory', () => {
     it('selects _msgHandler_3_4 for version 3.4', () => {
       const acc = new TuyaAccessory(makeProps({ version: '3.4' }) as any)
       expect(acc).toBeInstanceOf(TuyaAccessory)
+    })
+
+    it('negotiates a protocol 3.5 session key', async () => {
+      vi.useRealTimers()
+      const key = 'abcdef1234567890'
+      const acc = new TuyaAccessory(makeProps({ key, version: '3.5', connect: true }) as any)
+      lastSocket.emit('connect')
+      lastSocket.emit('ready')
+
+      const startPacket = lastSocket.write.mock.calls[0][0] as Buffer
+      const startIv = startPacket.slice(18, 30)
+      const startTag = startPacket.slice(-20, -4)
+      const startCiphertext = startPacket.slice(30, -20)
+      const startDecipher = crypto.createDecipheriv('aes-128-gcm', key, startIv)
+      startDecipher.setAuthTag(startTag)
+      startDecipher.setAAD(startPacket.slice(4, 18))
+      const localNonce = Buffer.concat([startDecipher.update(startCiphertext), startDecipher.final()])
+      const remoteNonce = Buffer.from('fedcba0987654321')
+      const localHmac = crypto.createHmac('sha256', key).update(localNonce).digest()
+
+      lastSocket.emit('data', build35Frame(4, Buffer.concat([Buffer.alloc(4), remoteNonce, localHmac]), key))
+      await new Promise((resolve) => setTimeout(resolve, 20))
+
+      expect(acc.connected).toBe(true)
+      expect(acc.session_key).toBeInstanceOf(Buffer)
+      expect(lastSocket.write).toHaveBeenCalledTimes(3)
     })
   })
   // ── reachability reporting ────────────────────────────────────────────────────

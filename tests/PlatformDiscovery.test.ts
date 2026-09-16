@@ -133,6 +133,29 @@ describe('discoverDevices', () => {
     expect(discoveryStart.mock.calls[0][0]).toMatchObject({ ids: ['bbbbbbbbbbbbbbbbbbb2'] })
   })
 
+  it('adds a cached-only device without waiting for discovery', () => {
+    const { platform, log } = buildPlatform([
+      {
+        id: 'bbbbbbbbbbbbbbbbbbb2',
+        key: 'k',
+        type: 'contactsensor',
+        useCachedState: true,
+        initialState: { '1': false, '2': 100 },
+      },
+    ])
+
+    platform.discoverDevices()
+
+    expect(discoveryStart).not.toHaveBeenCalled()
+    expect(accessoryInstances).toHaveLength(1)
+    expect(accessoryInstances[0]).toMatchObject({ fake: true, initialState: { '1': false, '2': 100 } })
+    expect(log.info).toHaveBeenCalledWith(
+      'Adding cached-only device %s (%s).',
+      'bbbbbbbbbbbbbbbbbbb2'.slice(8),
+      'bbbbbbbbbbbbbbbbbbb2',
+    )
+  })
+
   it('keeps a device with an IP but no version in discovery, because that is where the version comes from', () => {
     const { platform } = buildPlatform([{ id: 'ccccccccccccccccccc3', key: 'k', type: 'outlet', ip: '192.168.0.32' }])
 

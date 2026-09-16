@@ -82,7 +82,7 @@ Add to your Homebridge `config.json`:
 
 ## Why Local Control?
 
-Tuya's cloud relies on remote servers. Any outage, policy change, or internet disruption can leave your automations unresponsive. This plugin talks directly to your devices over your LAN using the Tuya protocol (v3.1, v3.3, v3.4):
+Tuya's cloud relies on remote servers. Any outage, policy change, or internet disruption can leave your automations unresponsive. This plugin talks directly to your devices over your LAN using the Tuya protocol (v3.1, v3.3, v3.4, v3.5):
 
 - **Works offline:** your smart home keeps working even when the internet is down
 - **Instant response:** no round-trip to the cloud; commands execute in milliseconds
@@ -93,12 +93,12 @@ Tuya's cloud relies on remote servers. Any outage, policy change, or internet di
 ## Features
 
 - **Local LAN Control:** Communicates directly with devices; no cloud, no internet dependency
-- **25 Device Types:** Outlets, lights, dimmers, fans, sensors, climate control, and more
+- **29 Device Types:** Outlets, lights, dimmers, fans, sensors, climate control, IR/RF hubs, and more
 - **Adaptive Lighting:** HomeKit Adaptive Lighting on compatible tunable white and RGBTW accessories
 - **Energy Monitoring:** Real-time voltage, current, and power readings on supported devices
 - **Automatic Discovery:** UDP broadcast discovery finds devices on your local network automatically
 - **Flexible Configuration:** Override DataPoints (DPs) and tune device behavior per accessory
-- **Multi-protocol Support:** Full encryption and authentication for Tuya protocol v3.1, v3.3, and v3.4
+- **Multi-protocol Support:** Full encryption and authentication for Tuya protocol v3.1, v3.3, v3.4, and v3.5
 - **TypeScript:** Fully typed codebase with comprehensive test coverage
 
 ---
@@ -118,6 +118,7 @@ Tuya's cloud relies on remote servers. Any outage, policy change, or internet di
 | Smart Fan Regulator                   |          `Fan`          |
 | Smart Fan with Light                  |       `FanLight`        |
 | Garage Door                           |      `GarageDoor`       |
+| Infrared / RF Hub                     |      `InfraredHub`      |
 | Mapped Heat Pump Heater               | `MappedHeatPumpHeater`  |
 | Smart Power Strip                     |      `MultiOutlet`      |
 | Oil Diffuser                          |      `OilDiffuser`      |
@@ -133,6 +134,8 @@ Tuya's cloud relies on remote servers. Any outage, policy change, or internet di
 | Multi-Switch                          |        `Switch`         |
 | Tunable White Light Bulb              |        `TWLight`        |
 | Water Valve                           |      `WaterValve`       |
+| Wireless Zigbee Switch                |    `WirelessSwitch`    |
+| Zigbee Gateway                        |        `Gateway`        |
 
 > The `type` value is **case-insensitive**. `"SimpleLight"`, `"simplelight"`, and `"SIMPLELIGHT"` all work.
 

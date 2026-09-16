@@ -30,11 +30,11 @@ features:
     details: Communicates directly with devices using the Tuya protocol. No cloud servers, no internet dependency, no latency.
   - icon:
       src: /device.svg
-    title: 25 Device Types
-    details: Outlets, lights, dimmers, fans, sensors, blinds, climate, garage doors, valves, and more. Each with dedicated HomeKit mapping.
+    title: 29 Device Types
+    details: Outlets, lights, dimmers, fans, sensors, blinds, climate, garage doors, IR/RF hubs, valves, and more. Each with dedicated HomeKit mapping.
   - icon:
       src: /tuya-logo.svg
-    title: Tuya Protocol v3.1 / 3.3 / 3.4
+    title: Tuya Protocol v3.1 / 3.3 / 3.4 / 3.5
     details: Full encryption and authentication support across all major Tuya LAN protocol versions.
   - icon:
       src: /bulb.svg

@@ -28,6 +28,9 @@ import {
   OilDiffuserAccessory,
   TemperatureHumiditySensorAccessory,
   ContactSensorAccessory,
+  InfraredHubAccessory,
+  WirelessSwitchAccessory,
+  GatewayAccessory,
 } from './accessories'
 
 import type { ClassDefMap, TuyaDeviceConfig, TuyaPlatformConfig } from './types'
@@ -64,6 +67,12 @@ const CLASS_DEF: ClassDefMap = {
   thermometer: TemperatureHumiditySensorAccessory,
   contactsensor: ContactSensorAccessory,
   doorsensor: ContactSensorAccessory,
+  infraredhub: InfraredHubAccessory,
+  ircontrolhub: InfraredHubAccessory,
+  rfhub: InfraredHubAccessory,
+  wirelessswitch: WirelessSwitchAccessory,
+  gateway: GatewayAccessory,
+  zigbeegateway: GatewayAccessory,
 }
 
 let Characteristic: any, PlatformAccessory: any, Service: any, Categories: any, Perms: any, UUID: any
@@ -91,12 +100,14 @@ class TuyaLocalPlatform {
   config: TuyaPlatformConfig
   api: any
   cachedAccessories: Map<string, any>
+  deviceInstances: Map<string, TuyaAccessory>
   _expectedUUIDs?: string[]
 
   constructor(...props: any[]) {
     ;[this.log, this.config, this.api] = [...props]
 
     this.cachedAccessories = new Map()
+    this.deviceInstances = new Map()
     this.api.hap.EnergyCharacteristics = EnergyCharacteristicsFactory(this.api.hap.Characteristic)
 
     if (!this.config || !this.config.devices) {
@@ -161,14 +172,46 @@ class TuyaLocalPlatform {
     // is where the version is learned. Guessing is worse than waiting here: the fallback
     // is 3.1, and speaking 3.1 to a 3.3 device fails without saying why.
     const directIds = deviceIds.filter((deviceId) => devices[deviceId].ip && devices[deviceId].version)
-    const discoveryIds = deviceIds.filter((deviceId) => !directIds.includes(deviceId))
+    const cachedOnlyIds = deviceIds.filter((deviceId) => {
+      const config = devices[deviceId]
+      return (
+        !config.ip &&
+        !config.parentId &&
+        !config.gatewayId &&
+        config.useCachedState === true &&
+        config.initialState &&
+        Object.keys(config.initialState).length > 0
+      )
+    })
+    const orderedDirectIds: string[] = []
+    const visiting = new Set<string>()
+    const visited = new Set<string>()
+    const addInParentOrder = (deviceId: string): void => {
+      if (visited.has(deviceId) || visiting.has(deviceId)) return
+      visiting.add(deviceId)
+      const parentId = devices[deviceId].parentId || devices[deviceId].gatewayId
+      if (parentId && devices[parentId]) addInParentOrder(parentId)
+      visiting.delete(deviceId)
+      visited.add(deviceId)
+      orderedDirectIds.push(deviceId)
+    }
+    directIds.forEach(addInParentOrder)
+    const discoveryIds = deviceIds.filter(
+      (deviceId) => !directIds.includes(deviceId) && !cachedOnlyIds.includes(deviceId),
+    )
 
-    directIds.forEach((deviceId) => {
+    orderedDirectIds.forEach((deviceId) => {
       connectedDevices.push(deviceId)
 
       this.log.info('Connecting directly to %s (%s) via %s.', devices[deviceId].name, deviceId, devices[deviceId].ip)
 
       this.addDeviceAccessory(devices[deviceId], deviceId)
+    })
+
+    cachedOnlyIds.forEach((deviceId) => {
+      connectedDevices.push(deviceId)
+      this.log.info('Adding cached-only device %s (%s).', devices[deviceId].name, deviceId)
+      this.addDeviceAccessory({ ...devices[deviceId], fake: true }, deviceId, 'cached accessory')
     })
 
     if (discoveryIds.length > 0) {
@@ -230,12 +273,22 @@ class TuyaLocalPlatform {
 
   addDeviceAccessory(config: TuyaDeviceConfig & { name: string }, deviceId: string, label: string = 'accessory'): void {
     try {
+      const parentId = config.parentId || config.gatewayId
+      const parent = parentId ? this.deviceInstances.get(parentId) : undefined
+      if (parentId && !parent) {
+        this.log.warn('Parent gateway %s for %s is not configured or has not started yet.', parentId, deviceId)
+      }
       const device = new TuyaAccessory({
         ...config,
+        key: config.key || parent?.context.key,
+        ip: config.ip || parent?.context.ip,
+        version: config.version || parent?.context.version,
+        parent,
         log: this.log,
         UUID: UUID.generate(PLUGIN_NAME + ':' + deviceId),
         connect: false,
       })
+      this.deviceInstances.set(deviceId, device)
       this.addAccessory(device)
     } catch (err: any) {
       this.log.error('Failed to add %s %s (%s): %s', label, config.name, deviceId, err && err.stack ? err.stack : err)

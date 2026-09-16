@@ -62,9 +62,19 @@ class TuyaAccessory extends EventEmitter {
   private _sendCounter = 0
   private _tmpLocalKey: Buffer | null = null
   private _tmpRemoteKey: Buffer | null = null
+  private _parent: TuyaAccessory | null = null
+  private _children = new Map<string, TuyaAccessory>()
   session_key: Buffer | null = null
 
-  constructor(props: Partial<TuyaDeviceContext> & { log: Logger; fake?: boolean; port?: number; connect?: boolean }) {
+  constructor(
+    props: Partial<TuyaDeviceContext> & {
+      log: Logger
+      fake?: boolean
+      port?: number
+      connect?: boolean
+      parent?: TuyaAccessory
+    },
+  ) {
     super()
 
     if (!(props.id && props.key && props.ip) && !props.fake) {
@@ -73,13 +83,21 @@ class TuyaAccessory extends EventEmitter {
     }
 
     this.log = props.log
-    this.context = { version: '3.1', port: 6668, ...props } as TuyaAccessory['context']
-    this.state = {}
+    const { parent, ...contextProps } = props
+    this.context = { version: '3.1', port: 6668, ...contextProps } as TuyaAccessory['context']
+    this._parent = parent || null
+    this.state = props.initialState ? { ...props.initialState } : {}
     this._cachedBuffer = Buffer.allocUnsafe(0)
 
     const version = parseFloat(this.context.version || '3.1')
     const handlerName =
-      version < 3.2 ? '_msgHandler_3_1' : this.context.version === '3.4' ? '_msgHandler_3_4' : '_msgHandler_3_3'
+      version < 3.2
+        ? '_msgHandler_3_1'
+        : this.context.version === '3.4'
+          ? '_msgHandler_3_4'
+          : this.context.version === '3.5'
+            ? '_msgHandler_3_5'
+            : '_msgHandler_3_3'
     this._msgQueue = async.queue((task: MessageTask, callback: () => void) => {
       try {
         this[handlerName](task, callback)
@@ -96,6 +114,9 @@ class TuyaAccessory extends EventEmitter {
     this.connected = false
     if (props.connect !== false) this._connect()
 
+    if (this.context.initialState && Object.keys(this.context.initialState).length > 0)
+      process.nextTick(() => this.emit('change', {}, this.state))
+
     this._connectionAttempts = 0
     this._sendCounter = 0
 
@@ -105,11 +126,19 @@ class TuyaAccessory extends EventEmitter {
   }
 
   _connect(): void {
+    if (this._parent) {
+      this._parent._registerChild(this)
+      this._parent.on('connect', () => this._connectToParent())
+      this._parent.on('disconnect', () => this._disconnectFromParent())
+      if (this._parent.connected) process.nextTick(() => this._connectToParent())
+      return
+    }
+
     if (this.context.fake) {
       this.connected = true
-      return void setTimeout(() => {
-        this.emit('change', {}, this.state)
-      }, 1000)
+      if (!this.context.initialState || Object.keys(this.context.initialState).length === 0)
+        return void setTimeout(() => this.emit('change', {}, this.state), 1000)
+      return
     }
 
     this._socket = new net.Socket() as TuyaSocket
@@ -163,7 +192,7 @@ class TuyaAccessory extends EventEmitter {
     }
 
     this._socket.on('connect', () => {
-      if (this.context.version !== '3.4') {
+      if (this.context.version !== '3.4' && this.context.version !== '3.5') {
         clearTimeout(this._socket._connTimeout!)
 
         this.connected = true
@@ -182,7 +211,7 @@ class TuyaAccessory extends EventEmitter {
       if (this.context.intro === false) return
       this.connected = true
 
-      if (this.context.version === '3.4') {
+      if (this.context.version === '3.4' || this.context.version === '3.5') {
         this._tmpLocalKey = crypto.randomBytes(16)
         const payload: SendPayload = {
           data: this._tmpLocalKey,
@@ -199,14 +228,18 @@ class TuyaAccessory extends EventEmitter {
       this._cachedBuffer = Buffer.concat([this._cachedBuffer, msg])
 
       do {
-        const startingIndex = this._cachedBuffer.indexOf('000055aa', 'hex')
+        const legacyIndex = this._cachedBuffer.indexOf('000055aa', 'hex')
+        const modernIndex = this._cachedBuffer.indexOf('00006699', 'hex')
+        const startingIndex =
+          legacyIndex === -1 ? modernIndex : modernIndex === -1 ? legacyIndex : Math.min(legacyIndex, modernIndex)
         if (startingIndex === -1) {
           this._cachedBuffer = Buffer.allocUnsafe(0)
           break
         }
         if (startingIndex !== 0) this._cachedBuffer = this._cachedBuffer.slice(startingIndex)
 
-        let endingIndex = this._cachedBuffer.indexOf('0000aa55', 'hex')
+        const suffix = this._cachedBuffer.readUInt32BE(0) === 0x00006699 ? '00009966' : '0000aa55'
+        let endingIndex = this._cachedBuffer.indexOf(suffix, 4, 'hex')
         if (endingIndex === -1) break
 
         endingIndex += 4
@@ -218,6 +251,7 @@ class TuyaAccessory extends EventEmitter {
     })
 
     this._socket.on('error', (err: NodeJS.ErrnoException) => {
+      this._disconnectChildren()
       this.connected = false
       this._reportUnreachable(err)
 
@@ -254,15 +288,42 @@ class TuyaAccessory extends EventEmitter {
     })
 
     this._socket.on('close', () => {
+      this._disconnectChildren()
       this.connected = false
       this.session_key = null
     })
 
     this._socket.on('end', () => {
+      this._disconnectChildren()
       this.connected = false
       this.session_key = null
       this.log.info('Disconnected from', this.context.name)
     })
+  }
+
+  private _registerChild(child: TuyaAccessory): void {
+    const childId = String(child.context.id)
+    const cid = child.context.cid || child.context.nodeId
+    this._children.set(childId, child)
+    if (cid) this._children.set(String(cid), child)
+  }
+
+  private _connectToParent(): void {
+    if (!this._parent?.connected || this.connected) return
+    this.connected = true
+    this.emit('connect')
+    this.update()
+  }
+
+  private _disconnectFromParent(): void {
+    if (!this.connected) return
+    this.connected = false
+    this.emit('disconnect')
+  }
+
+  private _disconnectChildren(): void {
+    const children = new Set(this._children.values())
+    children.forEach((child) => child._disconnectFromParent())
   }
 
   private _incrementAttemptCounter(): void {
@@ -334,9 +395,7 @@ class TuyaAccessory extends EventEmitter {
           break
         }
 
-        if (data && typeof data === 'object' && data.dps) {
-          this._change(data.dps)
-        }
+        if (data && typeof data === 'object' && data.dps) this._changePayload(data)
         break
       }
 
@@ -361,7 +420,7 @@ class TuyaAccessory extends EventEmitter {
             break
           }
 
-          if (data && typeof data === 'object' && data.dps) this._change(data.dps)
+          if (data && typeof data === 'object' && data.dps) this._changePayload(data)
         }
         break
 
@@ -440,7 +499,7 @@ class TuyaAccessory extends EventEmitter {
       case 10:
         if (data) {
           if (data.dps) {
-            this._change(data.dps)
+            this._changePayload(data)
           } else {
             this.log.info(`Malformed message from ${this.context.name} with command ${cmd}:`, decryptedMsg)
             this.log.info(
@@ -494,13 +553,26 @@ class TuyaAccessory extends EventEmitter {
     )
 
     const expectedCrc = task.msg.slice(len - 0x24, task.msg.length - 4).toString('hex')
-    const computedCrc = hmac(task.msg.slice(0, len - 0x24), this.session_key ?? this.context.key).toString('hex')
+    const sessionKey = this.session_key ?? this.context.key
+    let messageKey: Buffer | string = sessionKey
+    let computedCrc = hmac(task.msg.slice(0, len - 0x24), sessionKey).toString('hex')
+
+    if (expectedCrc !== computedCrc && this.session_key) {
+      const localKeyCrc = hmac(task.msg.slice(0, len - 0x24), this.context.key).toString('hex')
+      if (expectedCrc === localKeyCrc) {
+        messageKey = this.context.key
+        computedCrc = localKeyCrc
+        this.log.debug(
+          `Using the device key for an unsolicited ${this.context.version} message from ${this.context.name}`,
+        )
+      }
+    }
 
     if (expectedCrc !== computedCrc) {
       throw new Error(`HMAC mismatch: expected ${expectedCrc}, was ${computedCrc}. ${task.msg.toString('hex')}`)
     }
 
-    const decipher = crypto.createDecipheriv('aes-128-ecb', this.session_key ?? this.context.key, null)
+    const decipher = crypto.createDecipheriv('aes-128-ecb', messageKey, null)
     decipher.setAutoPadding(false)
     let decryptedMsg: Buffer = decipher.update(cleanMsg)
     decipher.final()
@@ -558,7 +630,7 @@ class TuyaAccessory extends EventEmitter {
       return callback()
     }
 
-    if (cmd === 10 && parsedPayload === 'json obj data unvalid') {
+    if ((cmd === 10 || cmd === 16) && parsedPayload === 'json obj data unvalid') {
       this._logOutageDetail(`${this.context.name} (${this.context.version}) didn't respond with its current state.`)
       this.emit('change', {}, this.state)
       return callback()
@@ -570,7 +642,7 @@ class TuyaAccessory extends EventEmitter {
       case 16:
         if (parsedPayload) {
           if (parsedPayload.dps) {
-            this._change(parsedPayload.dps)
+            this._changePayload(parsedPayload)
           } else {
             this.log.info(`Malformed message from ${this.context.name} with command ${cmd}:`, decryptedMsg)
             this.log.info(
@@ -581,12 +653,91 @@ class TuyaAccessory extends EventEmitter {
         }
         break
 
+      case 64:
+        this.emit('payload', parsedPayload)
+        break
+
       default:
         this.log.info(`Odd message from ${this.context.name} with command ${cmd}:`, decryptedMsg)
         this.log.info(
           `Raw message from ${this.context.name} (${this.context.version}) with command ${cmd}:`,
           task.msg.toString('hex'),
         )
+    }
+
+    callback()
+  }
+
+  private _msgHandler_3_5(task: MessageTask, callback: () => void): void {
+    if (!(task.msg instanceof Buffer)) return callback()
+
+    const len = task.msg.length
+    if (len < 24 || task.msg.readUInt32BE(0) !== 0x00006699 || task.msg.readUInt32BE(len - 4) !== 0x00009966)
+      return callback()
+
+    const cmd = task.msg.readUInt32BE(10)
+    if (cmd === 9) {
+      if (this._socket._pinger) clearTimeout(this._socket._pinger)
+      this._socket._pinger = setTimeout(
+        () => {
+          this._socket._ping()
+        },
+        ((this.context.pingGap || 20) as number) * 1000,
+      )
+      return callback()
+    }
+
+    const encrypted = task.msg.slice(4, len - 4)
+    let decrypted: Buffer
+    try {
+      decrypted = decrypt35(encrypted, this.session_key ?? this.context.key)
+    } catch (err) {
+      throw new Error(`Protocol 3.5 decrypt failed: ${err instanceof Error ? err.message : String(err)}`, {
+        cause: err,
+      })
+    }
+
+    if (cmd === 4) {
+      this._sendCounter = task.msg.readUInt32BE(6) - 1
+      this._tmpRemoteKey = decrypted.subarray(0, 16)
+      const expectedHmac = decrypted.subarray(16, 48).toString('hex')
+      const actualHmac = hmac(this._tmpLocalKey!, this.context.key).toString('hex')
+      if (expectedHmac !== actualHmac) {
+        throw new Error(`HMAC mismatch(keys): expected ${expectedHmac}, was ${actualHmac}`)
+      }
+
+      this._send({ cmd: 5, data: hmac(this._tmpRemoteKey, this.context.key) })
+
+      this.session_key = Buffer.alloc(16)
+      for (let index = 0; index < 16; index++)
+        this.session_key[index] = this._tmpLocalKey![index] ^ this._tmpRemoteKey[index]
+      this.session_key = encrypt35(this.session_key, this.context.key, this._tmpLocalKey)
+
+      clearTimeout(this._socket._connTimeout!)
+      this.connected = true
+      this.emit('connect')
+      this.update()
+      if (this._socket._pinger) clearTimeout(this._socket._pinger)
+      this._socket._pinger = setTimeout(() => this._socket._ping(), 1000)
+      return callback()
+    }
+
+    const parsed = parse35Payload(decrypted)
+    if (cmd === 16 && parsed === 'json obj data unvalid') {
+      this._logOutageDetail(`${this.context.name} (${this.context.version}) didn't respond with its current state.`)
+      this.emit('change', {}, this.state)
+      return callback()
+    }
+
+    if (
+      (cmd === 8 || cmd === 10 || cmd === 13 || cmd === 16) &&
+      parsed &&
+      typeof parsed === 'object' &&
+      'dps' in parsed
+    ) {
+      this._changePayload(parsed as { dps: DPSState })
+    } else if (cmd !== 7 && cmd !== 13 && parsed) {
+      this.log.debug(`Message from ${this.context.name} with command ${cmd}:`, parsed)
     }
 
     callback()
@@ -612,39 +763,52 @@ class TuyaAccessory extends EventEmitter {
     let result: boolean | undefined
     if (hasDataPoint) {
       const t = (Date.now() / 1000).toFixed(0)
-      const payload: Record<string, unknown> = {
-        devId: this.context.id,
-        uid: '',
-        t,
-        dps,
-      }
-      const data =
-        this.context.version === '3.4'
-          ? {
-              data: { ...payload, ctype: 0, t: undefined },
-              protocol: 5,
-              t,
-            }
-          : payload
+      const modern = this.context.version === '3.4' || this.context.version === '3.5'
+      const cid = this.context.cid || this.context.nodeId
+      const payload: Record<string, unknown> = this._parent
+        ? modern
+          ? { protocol: 5, t: Number(t), data: { cid: cid || this.context.id, ctype: 0, dps } }
+          : { t: Number(t), cid: cid || this.context.id, dps }
+        : {
+            devId: this.context.id,
+            uid: '',
+            t,
+            dps,
+          }
+      const data = modern && !this._parent ? { data: { ...payload, ctype: 0, t: undefined }, protocol: 5, t } : payload
       result = this._send({
         data: data as Record<string, unknown>,
-        cmd: this.context.version === '3.4' ? 13 : 7,
+        cmd: modern ? 13 : 7,
       })
       if (result !== true) this.log.info(' Result', result)
       if (this.context.sendEmptyUpdate) {
-        this._send({ cmd: this.context.version === '3.4' ? 13 : 7 })
+        this._send({ cmd: modern ? 13 : 7 })
       }
     } else {
+      const modern = this.context.version === '3.4' || this.context.version === '3.5'
+      const cid = this.context.cid || this.context.nodeId
       result = this._send({
-        data: {
-          gwId: this.context.id,
-          devId: this.context.id,
-        },
-        cmd: this.context.version === '3.4' ? 16 : 10,
+        data: this._parent
+          ? modern
+            ? { cid: cid || this.context.id }
+            : { t: Number((Date.now() / 1000).toFixed(0)), cid: cid || this.context.id }
+          : {
+              gwId: this.context.id,
+              devId: this.context.id,
+            },
+        cmd: modern ? 16 : 10,
       })
     }
 
     return result as boolean
+  }
+
+  querySubdevices(): boolean {
+    if (this._parent) return this._parent.querySubdevices()
+    return this._send({
+      cmd: 64,
+      data: { reqType: 'subdev_online_stat_query', data: { cids: [] } },
+    }) as boolean
   }
 
   // An outage is reported once, not once per retry. A device that drops off the
@@ -679,6 +843,21 @@ class TuyaAccessory extends EventEmitter {
     this.log.debug(message)
   }
 
+  private _changePayload(payload: {
+    dps?: DPSState
+    cid?: string
+    devId?: string
+    data?: { cid?: string; dps?: DPSState }
+  }): void {
+    if (!payload.dps) return
+
+    const childKey = payload.cid || payload.data?.cid || payload.devId
+    const child = childKey ? this._children.get(String(childKey)) : undefined
+    if (child) return child._change(payload.dps)
+
+    this._change(payload.dps)
+  }
+
   private _change(data: DPSState): void {
     if (!isNonEmptyPlainObject(data)) return
 
@@ -700,12 +879,14 @@ class TuyaAccessory extends EventEmitter {
   }
 
   private _send(o: SendPayload): boolean | undefined {
+    if (this._parent) return this._parent._send(o)
     if (this.context.fake) return
-    if (!this.connected) return false
+    if (!this.connected && o.cmd !== 3 && o.cmd !== 5) return false
 
     const version = parseFloat(this.context.version || '3.1')
     if (version < 3.2) return this._send_3_1(o)
     if (this.context.version === '3.3') return this._send_3_3(o)
+    if (this.context.version === '3.5') return this._send_3_5(o)
     return this._send_3_4(o)
   }
 
@@ -803,7 +984,7 @@ class TuyaAccessory extends EventEmitter {
       data = Buffer.from(data)
     }
 
-    if (cmd !== 10 && cmd !== 9 && cmd !== 16 && cmd !== 3 && cmd !== 5 && cmd !== 18) {
+    if (cmd !== 10 && cmd !== 9 && cmd !== 16 && cmd !== 3 && cmd !== 5 && cmd !== 18 && cmd !== 64) {
       const buffer = Buffer.alloc((data as Buffer).length + 15)
       Buffer.from('3.4').copy(buffer, 0)
       ;(data as Buffer).copy(buffer, 15)
@@ -834,6 +1015,38 @@ class TuyaAccessory extends EventEmitter {
 
     return this._socket.write(buffer)
   }
+
+  private _send_3_5(o: SendPayload): boolean {
+    const { cmd, data: rawData } = o
+    let data =
+      rawData instanceof Buffer
+        ? rawData
+        : rawData === undefined
+          ? Buffer.alloc(0)
+          : Buffer.from(typeof rawData === 'string' ? rawData : JSON.stringify(rawData))
+
+    if (cmd !== 10 && cmd !== 9 && cmd !== 16 && cmd !== 3 && cmd !== 5 && cmd !== 18 && cmd !== 64) {
+      const payload = Buffer.alloc(data.length + 15)
+      Buffer.from('3.5').copy(payload, 0)
+      data.copy(payload, 15)
+      data = payload
+    }
+
+    this._sendCounter++
+    const header = Buffer.alloc(18)
+    header.writeUInt32BE(0x00006699, 0)
+    header.writeUInt16BE(0, 4)
+    header.writeUInt32BE(this._sendCounter, 6)
+    header.writeUInt32BE(cmd, 10)
+    header.writeUInt32BE(data.length + 28, 14)
+
+    return this._socket.write(
+      Buffer.concat([
+        header,
+        encrypt35(data, this.session_key ?? this.context.key, undefined, header.slice(4, 18), true),
+      ]),
+    )
+  }
 }
 
 const encrypt34 = (data: Buffer, encryptKey: string | Buffer): Buffer => {
@@ -846,6 +1059,51 @@ const encrypt34 = (data: Buffer, encryptKey: string | Buffer): Buffer => {
 
 const hmac = (data: Buffer, hmacKey: string | Buffer): Buffer => {
   return crypto.createHmac('sha256', hmacKey).update(data).digest()
+}
+
+const encrypt35 = (
+  data: Buffer,
+  encryptKey: string | Buffer,
+  iv?: Buffer,
+  aad?: Buffer,
+  includeHeader = false,
+): Buffer => {
+  const localIV = iv ? iv.subarray(0, 12) : Buffer.from((Date.now() * 10).toString().slice(0, 12))
+  const cipher = crypto.createCipheriv('aes-128-gcm', encryptKey, localIV)
+  if (aad) cipher.setAAD(aad)
+  const encrypted = Buffer.concat([cipher.update(data), cipher.final()])
+  if (!includeHeader) return encrypted
+  return Buffer.concat([localIV, encrypted, cipher.getAuthTag(), Buffer.from('00009966', 'hex')])
+}
+
+const decrypt35 = (data: Buffer, decryptKey: string | Buffer): Buffer => {
+  const header = data.slice(0, 14)
+  const localIV = data.slice(14, 26)
+  const authTag = data.slice(data.length - 16)
+  const encrypted = data.slice(26, data.length - 16)
+  const decipher = crypto.createDecipheriv('aes-128-gcm', decryptKey, localIV)
+  decipher.setAuthTag(authTag)
+  decipher.setAAD(header)
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).slice(4)
+}
+
+const parse35Payload = (payload: Buffer): DPSState | string | Buffer => {
+  let decoded = payload
+  if (decoded.subarray(0, 3).toString() === '3.5') decoded = decoded.subarray(15)
+
+  try {
+    const parsed = JSON.parse(decoded.toString())
+    if (parsed && typeof parsed === 'object' && 'data' in parsed) {
+      const inner = parsed.data
+      if (inner && typeof inner === 'object') {
+        inner.t = parsed.t
+        return inner
+      }
+    }
+    return parsed
+  } catch (_err) {
+    return decoded.toString()
+  }
 }
 
 const crc32LookupTable: number[] = []

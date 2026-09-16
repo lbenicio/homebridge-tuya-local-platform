@@ -7,11 +7,11 @@ Control Tuya-based smart devices locally over LAN through Apple HomeKit.
 ## Features
 
 - **Local LAN control** — no Tuya cloud needed after initial key extraction
-- **Wide device support** — 25 device type handlers covering most Tuya-based products
+- **Wide device support** — 29 device type handlers covering most Tuya-based products
 - **Apple HomeKit integration** — full support via Homebridge
 - **Adaptive Lighting** — supported on compatible light accessories
 - **Energy monitoring** — power, voltage, and current readings on supported outlets
-- **Multi-protocol** — supports Tuya protocol versions 3.1, 3.3, and 3.4
+- **Multi-protocol** — supports Tuya protocol versions 3.1, 3.3, 3.4, and 3.5
 
 ## Supported Device Types
 
@@ -28,6 +28,8 @@ Control Tuya-based smart devices locally over LAN through Apple HomeKit.
 | `Fan`                   | Fan                | Fan with rotation speed control                           |
 | `FanLight`              | Fan + Light        | Combined fan with lightbulb                               |
 | `GarageDoor`            | Garage             | Garage door opener with state tracking                    |
+| `Gateway`               | Gateway             | Optional gateway alarm and state mappings                 |
+| `InfraredHub`           | IR/RF               | Local learned IR/RF buttons through a physical hub        |
 | `MappedHeatPumpHeater`  | Climate            | Heat pump with virtual room-to-water temperature mapping  |
 | `MultiOutlet`           | Outlet             | Multi-outlet with debounced power switching               |
 | `OilDiffuser`           | Humidifier + Light | Oil diffuser with humidifier and RGB light                |
@@ -43,6 +45,7 @@ Control Tuya-based smart devices locally over LAN through Apple HomeKit.
 | `Switch`                | Switch             | Multi-switch with debounced power                         |
 | `TWLight`               | Light              | Tunable white with adaptive lighting                      |
 | `WaterValve`            | Valve              | Valve with timer support                                  |
+| `WirelessSwitch`        | Switch              | Directly addressable Zigbee/wireless button events        |
 
 See [Supported Device Types](./device-types) for detailed configuration parameters and examples for each device.
 

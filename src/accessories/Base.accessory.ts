@@ -57,13 +57,12 @@ class BaseAccessory {
 
   _checkServiceName(service: HAPService, name: string): void {
     const { Characteristic } = this.hap
+    const normalizedName = name.trim() || name
 
-    if (service.displayName !== name) {
-      const nameCharacteristic =
-        service.getCharacteristic(Characteristic.Name) || service.addCharacteristic(Characteristic.Name)
-      nameCharacteristic.setValue(name)
-      service.displayName = name
-    }
+    const nameCharacteristic =
+      service.getCharacteristic(Characteristic.Name) || service.addCharacteristic(Characteristic.Name)
+    if (nameCharacteristic.value !== normalizedName) nameCharacteristic.setValue(normalizedName)
+    if (service.displayName !== normalizedName) service.displayName = normalizedName
   }
 
   _getServiceByUUIDAndSubType(serviceType: any, subtype: string): any {
@@ -103,7 +102,12 @@ class BaseAccessory {
   }
 
   getState(dp: string | string[], callback: HomebridgeCallback): void {
-    if (!this.device.connected) return callback(new Error('Not connected'))
+    const cached =
+      this.device.context.useCachedState &&
+      (Array.isArray(dp)
+        ? dp.every((property) => Object.prototype.hasOwnProperty.call(this.device.state, property))
+        : Object.prototype.hasOwnProperty.call(this.device.state, dp))
+    if (!this.device.connected && !cached) return callback(new Error('Not connected'))
     const _callback = () => {
       if (Array.isArray(dp)) {
         const ret: DPSState = {}
