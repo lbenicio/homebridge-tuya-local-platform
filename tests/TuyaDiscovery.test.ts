@@ -118,9 +118,23 @@ describe('TuyaDiscovery', () => {
 
       expect(discoverSpy).toHaveBeenCalledTimes(1)
       const discovered = discoverSpy.mock.calls[0][0]
-      expect(discovered.id).toBe('abc123')
-      expect(discovered.ip).toBe('192.168.1.50')
+      expect(discovered).toEqual({ id: 'abc123', ip: '192.168.1.50', version: '3.3' })
       expect(discovery.discovered.has('abc123')).toBe(true)
+      discovery.stop()
+    })
+
+    it('rejects a response whose payload address differs from the sender', () => {
+      discovery.start({ log, ids: ['abc123'] })
+      const discoverSpy = vi.fn()
+      discovery.on('discover', discoverSpy)
+
+      const payload = { gwId: 'abc123', ip: '192.168.1.51', version: '3.3' }
+      const frame = buildDiscoveryFrame(payload)
+      const info = { address: '192.168.1.50', port: 6666, family: 'IPv4', size: frame.length }
+
+      ;(discovery as any)._onDgramMessage(6666, frame, info)
+
+      expect(discoverSpy).not.toHaveBeenCalled()
       discovery.stop()
     })
 

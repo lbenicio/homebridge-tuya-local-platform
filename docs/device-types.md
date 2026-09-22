@@ -852,7 +852,7 @@ Cloud library remotes expose a cloud `key` and `key_id`, not a raw waveform. Tho
   type: 'InfraredHub',
   id: '032000123456789abcde',
   key: '0123456789abcdef',
-  ip: '192.168.3.20',
+  ip: '192.0.2.20',
   version: '3.5',
   remotes: [
     {
@@ -879,7 +879,7 @@ Each configured button appears as a momentary switch. The plugin sends the comma
   type: 'WirelessSwitch',
   id: '032000123456789abcde',
   key: '0123456789abcdef',
-  ip: '192.168.3.21',
+  ip: '192.0.2.21',
   switches: [
     { name: 'Button 1', dp: 1 },
     { name: 'Button 2', dp: 2 },
@@ -900,7 +900,7 @@ Gateways can expose alarm sound and alarm-active state when their numeric DPs ar
   type: 'Gateway',
   id: '032000123456789abcde',
   key: '0123456789abcdef',
-  ip: '192.168.3.22',
+  ip: '192.0.2.22',
   dpAlarmSound: 1,
   dpAlarmActive: 2,
 }

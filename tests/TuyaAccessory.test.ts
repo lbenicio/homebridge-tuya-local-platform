@@ -119,7 +119,7 @@ describe('TuyaAccessory', () => {
     it('logs and skips init when required props are missing', () => {
       const props = { log, connect: false } as any
       const acc = new TuyaAccessory(props)
-      expect(log.info).toHaveBeenCalledWith('Insufficient details to initialize:', expect.any(String))
+      expect(log.info).toHaveBeenCalledWith('Insufficient details to initialize; missing %s.', 'id, key, ip')
       expect(acc.connected).toBe(false)
     })
 

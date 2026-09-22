@@ -82,7 +82,8 @@ class TuyaAccessory extends EventEmitter {
     super()
 
     if (!(props.id && props.key && props.ip) && !props.fake) {
-      if (props.log) props.log.info('Insufficient details to initialize:', JSON.stringify(props))
+      const missingDetails = [!props.id && 'id', !props.key && 'key', !props.ip && 'ip'].filter(Boolean).join(', ')
+      if (props.log) props.log.info('Insufficient details to initialize; missing %s.', missingDetails)
       return
     }
 

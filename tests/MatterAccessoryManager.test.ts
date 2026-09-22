@@ -16,7 +16,7 @@ function createDevice(type: string, state: Record<string, unknown> = { '1': fals
     name: 'Test Device',
     type,
     key: '1234567890123456',
-    ip: '192.168.3.9',
+    ip: '192.168.1.50',
   }
   device.state = state
   device.update = vi.fn(() => true)

@@ -225,6 +225,9 @@ class TuyaLocalPlatform {
         if (!config || !config.id) return
         if (!devices[config.id])
           return this.log.warn('Discovered a device that has not been configured yet (%s@%s).', config.id, config.ip)
+        if (devices[config.id].ip && devices[config.id].ip !== config.ip) {
+          return this.log.warn('Ignoring discovery for %s from an unexpected address (%s).', config.id, config.ip)
+        }
 
         connectedDevices.push(config.id)
 
@@ -236,7 +239,15 @@ class TuyaLocalPlatform {
           config.version,
         )
 
-        this.addDeviceAccessory({ ...devices[config.id], ...config }, config.id, 'discovered accessory')
+        this.addDeviceAccessory(
+          {
+            ...devices[config.id],
+            ip: config.ip,
+            ...(config.version ? { version: config.version } : {}),
+          },
+          config.id,
+          'discovered accessory',
+        )
       })
     }
 

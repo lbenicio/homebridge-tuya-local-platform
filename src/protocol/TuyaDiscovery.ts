@@ -1,6 +1,7 @@
 import dgram from 'dgram'
 import crypto from 'crypto'
 import { EventEmitter } from 'events'
+import net from 'net'
 import type { Logger } from 'homebridge'
 import type { DiscoveredDevice } from '../types'
 
@@ -19,6 +20,7 @@ class TuyaDiscovery extends EventEmitter {
 
   private _servers: Record<number, dgram.Socket | null> = {}
   private _running = false
+  private _lastDiagnosticAt = 0
 
   constructor() {
     super()
@@ -26,6 +28,7 @@ class TuyaDiscovery extends EventEmitter {
 
   start(props: DiscoveryOptions): this {
     this.log = props.log
+    this._lastDiagnosticAt = 0
 
     if (props.clear) {
       this.removeAllListeners()
@@ -110,13 +113,13 @@ class TuyaDiscovery extends EventEmitter {
   private _onDgramMessage(port: number, msg: Buffer, info: dgram.RemoteInfo): void {
     const len = msg.length
     if (len < 16 || msg.readUInt32BE(0) !== 0x000055aa || msg.readUInt32BE(len - 4) !== 0x0000aa55) {
-      this.log.error(`Discovery - UDP from ${info.address}:${port}`, msg.toString('hex'))
+      this._logDiagnostic(`Discovery - Ignoring invalid UDP packet on port ${port} with length ${len}.`)
       return
     }
 
     const size = msg.readUInt32BE(12)
-    if (len - size < 8) {
-      this.log.error(`Discovery - UDP from ${info.address}:${port} size ${len - size}`)
+    if (size < 12 || size > len - 8) {
+      this._logDiagnostic(`Discovery - Ignoring invalid UDP packet on port ${port} with payload size ${size}.`)
       return
     }
 
@@ -138,27 +141,33 @@ class TuyaDiscovery extends EventEmitter {
     if (!decryptedMsg) decryptedMsg = cleanMsg.toString('utf8')
 
     try {
-      const result = JSON.parse(decryptedMsg)
-      if (result && result.gwId && result.ip) this._onDiscover(result)
-      else this.log.error(`Discovery - UDP from ${info.address}:${port} decrypted`, cleanMsg.toString('hex'))
+      const result = JSON.parse(decryptedMsg) as Record<string, unknown>
+      const gwId = typeof result?.gwId === 'string' ? result.gwId : undefined
+      const payloadIp = typeof result?.ip === 'string' ? result.ip : undefined
+      if (!gwId || !payloadIp || net.isIP(payloadIp) !== 4 || payloadIp !== info.address) {
+        this._logDiagnostic(`Discovery - Ignoring untrusted UDP response on port ${port}.`)
+        return
+      }
+      if (this.limitedIds.length && !this.limitedIds.includes(gwId)) return
+
+      const version =
+        typeof result.version === 'string' && /^3\.(1|3|4|5)$/.test(result.version) ? result.version : undefined
+      this._onDiscover({ id: gwId, ip: info.address, ...(version ? { version } : {}) })
     } catch (_ex) {
-      this.log.error(`Discovery - Failed to parse discovery response on port ${port}: ${decryptedMsg}`)
-      this.log.error(`Discovery - Failed to parse discovery raw message on port ${port}: ${msg.toString('hex')}`)
+      this._logDiagnostic(`Discovery - Failed to parse discovery response on port ${port}.`)
     }
   }
 
-  private _onDiscover(data: Record<string, unknown> & { gwId: string; ip: string }): void {
-    if (this.discovered.has(data.gwId)) return
-    ;(data as unknown as DiscoveredDevice).id = data.gwId
-    delete (data as Record<string, unknown>).gwId
+  private _onDiscover(data: DiscoveredDevice): void {
+    if (this.discovered.has(data.id)) return
 
-    this.discovered.set((data as unknown as DiscoveredDevice).id, data.ip)
+    this.discovered.set(data.id, data.ip)
 
     this.emit('discover', data)
 
     if (
       this.limitedIds.length &&
-      this.limitedIds.includes((data as unknown as DiscoveredDevice).id) &&
+      this.limitedIds.includes(data.id) &&
       this.limitedIds.length <= this.discovered.size &&
       this.limitedIds.every((id) => this.discovered.has(id))
     ) {
@@ -166,6 +175,13 @@ class TuyaDiscovery extends EventEmitter {
         this.end()
       })
     }
+  }
+
+  private _logDiagnostic(message: string): void {
+    const now = Date.now()
+    if (now - this._lastDiagnosticAt < 1000) return
+    this._lastDiagnosticAt = now
+    this.log.error(message)
   }
 }
 

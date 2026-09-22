@@ -122,8 +122,7 @@ export interface PendingCallbacks {
 export interface DiscoveredDevice {
   id: string
   ip: string
-  version: string
-  [key: string]: unknown
+  version?: string
 }
 
 export type AccessoryClass = {

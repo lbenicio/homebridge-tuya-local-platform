@@ -133,6 +133,28 @@ describe('discoverDevices', () => {
     expect(discoveryStart.mock.calls[0][0]).toMatchObject({ ids: ['bbbbbbbbbbbbbbbbbbb2'] })
   })
 
+  it('keeps trusted configuration when handling discovery data', () => {
+    const { platform } = buildPlatform([{ id: 'bbbbbbbbbbbbbbbbbbb2', key: 'trusted-key', type: 'outlet' }])
+
+    platform.discoverDevices()
+    const discoverHandler = discoveryOn.mock.calls[0][1]
+    discoverHandler({
+      id: 'bbbbbbbbbbbbbbbbbbb2',
+      ip: '192.168.0.32',
+      version: '3.3',
+      key: 'spoofed-key',
+      type: 'switch',
+    })
+
+    expect(accessoryInstances[0]).toMatchObject({
+      id: 'bbbbbbbbbbbbbbbbbbb2',
+      key: 'trusted-key',
+      type: 'outlet',
+      ip: '192.168.0.32',
+      version: '3.3',
+    })
+  })
+
   it('adds a cached-only device without waiting for discovery', () => {
     const { platform, log } = buildPlatform([
       {
