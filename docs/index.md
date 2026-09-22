@@ -44,4 +44,8 @@ features:
       src: /lightning.svg
     title: Energy Monitoring
     details: Real-time voltage, current, and power readings on supported outlets and circuit breaker monitors.
+  - icon:
+      src: /homebridge.svg
+    title: Matter Support
+    details: Publish supported local Tuya devices through Homebridge 2 Matter child bridges without using Tuya cloud.
 ---

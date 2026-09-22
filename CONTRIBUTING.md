@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to `@nubisco/homebridge-tuya-local-platform`.
+Thanks for contributing to `@lbenicio/homebridge-tuya-local-platform`.
 
 For full contributor documentation, see `docs/contributing.md`.
 

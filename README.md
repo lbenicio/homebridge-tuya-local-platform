@@ -14,11 +14,11 @@
 
 [![CI](https://github.com/nubisco/homebridge-tuya-local-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/nubisco/homebridge-tuya-local-platform/actions/workflows/ci.yml)
 [![GitHub release](https://img.shields.io/github/v/release/nubisco/homebridge-tuya-local-platform)](https://github.com/nubisco/homebridge-tuya-local-platform/releases)
-[![npm version](https://img.shields.io/npm/v/@nubisco/homebridge-tuya-local-platform)](https://www.npmjs.com/package/@nubisco/homebridge-tuya-local-platform)
+[![npm version](https://img.shields.io/npm/v/@lbenicio/homebridge-tuya-local-platform)](https://www.npmjs.com/package/@lbenicio/homebridge-tuya-local-platform)
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/nubisco/homebridge-tuya-local-platform/badges/coverage.json)](https://github.com/nubisco/homebridge-tuya-local-platform/actions/workflows/ci.yml)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-339933)](https://www.npmjs.com/package/@nubisco/homebridge-tuya-local-platform)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-339933)](https://www.npmjs.com/package/@lbenicio/homebridge-tuya-local-platform)
 [![Homebridge](https://img.shields.io/badge/homebridge-%3E%3D1.6.0-blue)](https://homebridge.io)
-[![license](https://img.shields.io/npm/l/@nubisco/homebridge-tuya-local-platform)](LICENSE)
+[![license](https://img.shields.io/npm/l/@lbenicio/homebridge-tuya-local-platform)](LICENSE)
 [![Docs](https://img.shields.io/website?url=https%3A%2F%2Fdocs.nubisco.io%2Fhomebridge-tuya-local-platform%2F&label=docs)](https://docs.nubisco.io/homebridge-tuya-local-platform/)
 
 </div>
@@ -31,6 +31,7 @@
   - [Table of Contents](#table-of-contents)
   - [Quick Start](#quick-start)
   - [Why Local Control?](#why-local-control)
+  - [Matter](#matter)
   - [Features](#features)
   - [Supported Devices](#supported-devices)
   - [Documentation](#documentation)
@@ -47,13 +48,13 @@
 **Option 1: Homebridge UI (recommended):**
 
 1. Open the Homebridge web UI and navigate to the **Plugins** tab.
-2. Search for `@nubisco/homebridge-tuya-local-platform` and click **Install**.
+2. Search for `@lbenicio/homebridge-tuya-local-platform` and click **Install**.
 3. Use the plugin's settings form to add your devices, then restart Homebridge.
 
 **Option 2: Command line:**
 
 ```bash
-npm install -g @nubisco/homebridge-tuya-local-platform
+npm install -g @lbenicio/homebridge-tuya-local-platform
 ```
 
 Add to your Homebridge `config.json`:
@@ -77,6 +78,14 @@ Add to your Homebridge `config.json`:
 ```
 
 > **Need your device credentials?** See the [Getting Local Keys](https://docs.nubisco.io/homebridge-tuya-local-platform/get-local-keys) guide.
+
+---
+
+## Matter
+
+On Homebridge 2, enable the Matter protocol for this platform's child bridge in the Homebridge UI. Supported local lights, switches, outlets, temperature/humidity sensors, contact sensors, and wireless switches are then published by the same LAN connection, without Tuya cloud access.
+
+The existing HomeKit bridge remains available, and device UUIDs are kept stable when switching the package name.
 
 ---
 

@@ -146,7 +146,7 @@ describe('Platform Registration', () => {
   it('should register the platform with correct names', () => {
     registerFn(mockHomebridge)
     expect(mockHomebridge.registerPlatform).toHaveBeenCalledWith(
-      'homebridge-tuya-local-platform',
+      '@lbenicio/homebridge-tuya-local-platform',
       'TuyaLocalPlatform',
       expect.any(Function),
       true,
@@ -226,14 +226,14 @@ describe('Platform Registration', () => {
 
     platform.registerPlatformAccessories(a1)
     expect(api.registerPlatformAccessories).toHaveBeenLastCalledWith(
-      'homebridge-tuya-local-platform',
+      '@lbenicio/homebridge-tuya-local-platform',
       'TuyaLocalPlatform',
       [a1],
     )
 
     platform.registerPlatformAccessories([a1, a2])
     expect(api.registerPlatformAccessories).toHaveBeenLastCalledWith(
-      'homebridge-tuya-local-platform',
+      '@lbenicio/homebridge-tuya-local-platform',
       'TuyaLocalPlatform',
       [a1, a2],
     )

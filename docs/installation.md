@@ -4,24 +4,28 @@
 
 1. Open the Homebridge UI.
 2. Go to **Plugins**.
-3. Search for `@nubisco/homebridge-tuya-local-platform`.
+3. Search for `@lbenicio/homebridge-tuya-local-platform`.
 4. Click **Install**.
 5. Restart Homebridge.
 
 ## Option 2: Manual (npm)
 
 ```bash
-npm install -g @nubisco/homebridge-tuya-local-platform
+npm install -g @lbenicio/homebridge-tuya-local-platform
 ```
 
 Restart Homebridge after installation.
+
+## Matter on Homebridge 2
+
+Open the platform's child bridge settings and enable Matter. The plugin publishes supported local devices through the Matter child bridge while retaining the existing HomeKit bridge.
 
 ## Verify Installation
 
 Check that the plugin is registered:
 
 ```bash
-npm list -g @nubisco/homebridge-tuya-local-platform
+npm list -g @lbenicio/homebridge-tuya-local-platform
 ```
 
 ## Upgrading from `homebridge-tuya` / `TuyaLocalPlatform`

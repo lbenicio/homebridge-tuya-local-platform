@@ -24,11 +24,12 @@ function createPlatform() {
 }
 
 describe('InfraredHubAccessory', () => {
-  it('converts cloud pulse words to local little-endian base64', () => {
-    expect(cloudHexToBase64('2a247811')).toBe('JCoReA==')
+  it('converts cloud pulse bytes to local base64 without reordering', () => {
+    expect(cloudHexToBase64('2a247811')).toBe('KiR4EQ==')
   })
 
   it('creates momentary switches and sends DP 201 JSON', () => {
+    vi.useFakeTimers()
     const device = createMockTuyaDevice({
       name: 'IR Hub',
       type: 'infraredhub',
@@ -44,7 +45,45 @@ describe('InfraredHubAccessory', () => {
     characteristic.emit('set', true, vi.fn())
 
     expect(device.update).toHaveBeenCalledWith({
-      '201': JSON.stringify({ control: 'send_ir', type: 0, head: '', key1: '1JCoReA==' }),
+      '201': JSON.stringify({ control: 'send_ir', type: 0, head: '', key1: '1KiR4EQ==' }),
+    })
+
+    characteristic.emit('set', false, vi.fn())
+    expect(device.update).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(500)
+    expect(characteristic.value).toBe(false)
+    vi.useRealTimers()
+  })
+
+  it('sends native Tuya RF payloads without wrapping them as IR', () => {
+    const rfPayload = {
+      control: 'rfstudy_send',
+      rf_type: 'sub_2g',
+      mode: 0,
+      key1: { times: 6, intervals: 0, delay: 0, code: 'rf-code' },
+      feq: 0,
+      rate: 0,
+    }
+    const device = createMockTuyaDevice({
+      name: 'IR Hub',
+      type: 'infraredhub',
+      remotes: [{ name: 'RF', keys: [{ name: 'Power', rfPayload }] }],
+    } as any)
+    device.connected = true
+    const accessory = createMockPlatformAccessory({ name: 'IR Hub' })
+    const platform = createPlatform()
+    new InfraredHubAccessory(platform, accessory, device, false)
+
+    const service = accessory.services.find((item: any) => item.subtype === 'ir-0-0')
+    const characteristic = service.getCharacteristic(platform.api.hap.Characteristic.On)
+    characteristic.emit('set', true, vi.fn())
+
+    expect(device.update).toHaveBeenCalledWith({
+      '201': JSON.stringify({
+        ...rfPayload,
+        ver: '2',
+        key1: { ...rfPayload.key1, ver: '2' },
+      }),
     })
   })
 })

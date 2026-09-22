@@ -22,6 +22,8 @@ const formatOutage = (ms: number): string => {
   return `${seconds}s`
 }
 
+const OUTAGE_FAILURE_THRESHOLD = 2
+
 interface TuyaSocket extends net.Socket {
   _pinger?: ReturnType<typeof setTimeout> | null
   _connTimeout?: ReturnType<typeof setTimeout> | null
@@ -59,6 +61,8 @@ class TuyaAccessory extends EventEmitter {
   private _socket!: TuyaSocket
   private _connectionAttempts = 0
   private _unreachableSince: number | null = null
+  private _consecutiveFailures = 0
+  private _outageReported = false
   private _sendCounter = 0
   private _tmpLocalKey: Buffer | null = null
   private _tmpRemoteKey: Buffer | null = null
@@ -820,19 +824,32 @@ class TuyaAccessory extends EventEmitter {
 
     if (this._unreachableSince === null) {
       this._unreachableSince = Date.now()
-      this.log.info(`Device ${this.context.name} became unreachable; attempting to reconnect (${reason})`)
+    }
+
+    this._consecutiveFailures++
+
+    if (!this._outageReported && this._consecutiveFailures >= OUTAGE_FAILURE_THRESHOLD) {
+      this._outageReported = true
+      this.log.info(
+        `Device ${this.context.name} became unreachable after ${this._consecutiveFailures} consecutive failures; attempting to reconnect (${reason})`,
+      )
       return
     }
 
-    this.log.debug(`Socket error for ${this.context.name}: ${reason}; reconnecting`)
+    this.log.debug(
+      `Socket error for ${this.context.name}: ${reason}; reconnecting (consecutive failure ${this._consecutiveFailures})`,
+    )
   }
 
   private _reportReachable(): void {
     if (this._unreachableSince === null) return
 
     const outage = formatOutage(Date.now() - this._unreachableSince)
+    const outageReported = this._outageReported
     this._unreachableSince = null
-    this.log.info(`Device ${this.context.name} is reachable again (${outage})`)
+    this._consecutiveFailures = 0
+    this._outageReported = false
+    if (outageReported) this.log.info(`Device ${this.context.name} is reachable again (${outage})`)
   }
 
   // Detail that is worth a normal log line the first time, and noise once the

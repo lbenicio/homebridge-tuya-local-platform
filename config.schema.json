@@ -834,6 +834,12 @@
                         "name": { "type": "string" },
                         "hex": { "type": "string" },
                         "base64": { "type": "string" },
+                        "rfPayload": {
+                          "type": "object",
+                          "title": "RF payload",
+                          "description": "Native Tuya rfstudy_send JSON payload returned for an RF button.",
+                          "additionalProperties": true
+                        },
                         "type": { "type": "integer", "default": 0 }
                       }
                     }

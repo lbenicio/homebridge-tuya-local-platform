@@ -201,7 +201,7 @@ When opening an issue, include:
 
 - **Homebridge version**: `homebridge -V`
 - **Node.js version**: `node -v`
-- **Plugin version**: Check in Homebridge UI or `npm list @nubisco/homebridge-tuya-local-platform`
+- **Plugin version**: Check in Homebridge UI or `npm list @lbenicio/homebridge-tuya-local-platform`
 - **Device information**:
   - Device type (from your config)
   - Manufacturer and model

@@ -1,5 +1,6 @@
 import TuyaAccessory from './protocol/TuyaAccessory'
 import TuyaDiscovery from './protocol/TuyaDiscovery'
+import MatterAccessoryManager from './MatterAccessoryManager'
 
 import {
   EnergyCharacteristicsFactory,
@@ -35,7 +36,8 @@ import {
 
 import type { ClassDefMap, TuyaDeviceConfig, TuyaPlatformConfig } from './types'
 
-const PLUGIN_NAME = 'homebridge-tuya-local-platform'
+const PLUGIN_NAME = '@lbenicio/homebridge-tuya-local-platform'
+const UUID_NAMESPACE = 'homebridge-tuya-local-platform'
 const PLATFORM_NAME = 'TuyaLocalPlatform'
 
 const CLASS_DEF: ClassDefMap = {
@@ -99,6 +101,7 @@ class TuyaLocalPlatform {
   log: any
   config: TuyaPlatformConfig
   api: any
+  matterManager: MatterAccessoryManager
   cachedAccessories: Map<string, any>
   deviceInstances: Map<string, TuyaAccessory>
   _expectedUUIDs?: string[]
@@ -108,6 +111,7 @@ class TuyaLocalPlatform {
 
     this.cachedAccessories = new Map()
     this.deviceInstances = new Map()
+    this.matterManager = new MatterAccessoryManager(this.api, this.log)
     this.api.hap.EnergyCharacteristics = EnergyCharacteristicsFactory(this.api.hap.Characteristic)
 
     if (!this.config || !this.config.devices) {
@@ -120,7 +124,7 @@ class TuyaLocalPlatform {
     // unresponsive tile.
     this._expectedUUIDs = this.config.devices
       .filter((device: TuyaDeviceConfig) => !device.disabled)
-      .map((device: TuyaDeviceConfig) => UUID.generate(PLUGIN_NAME + (device.fake ? ':fake:' : ':') + device.id))
+      .map((device: TuyaDeviceConfig) => UUID.generate(UUID_NAMESPACE + (device.fake ? ':fake:' : ':') + device.id))
 
     this.api.on('didFinishLaunching', () => {
       this.discoverDevices()
@@ -242,7 +246,7 @@ class TuyaLocalPlatform {
         new TuyaAccessory({
           ...config,
           log: this.log,
-          UUID: UUID.generate(PLUGIN_NAME + ':fake:' + config.id),
+          UUID: UUID.generate(UUID_NAMESPACE + ':fake:' + config.id),
           connect: false,
         }),
       )
@@ -285,11 +289,12 @@ class TuyaLocalPlatform {
         version: config.version || parent?.context.version,
         parent,
         log: this.log,
-        UUID: UUID.generate(PLUGIN_NAME + ':' + deviceId),
+        UUID: UUID.generate(UUID_NAMESPACE + ':' + deviceId),
         connect: false,
       })
       this.deviceInstances.set(deviceId, device)
       this.addAccessory(device)
+      this.matterManager.add(device)
     } catch (err: any) {
       this.log.error('Failed to add %s %s (%s): %s', label, config.name, deviceId, err && err.stack ? err.stack : err)
     }
@@ -390,6 +395,10 @@ class TuyaLocalPlatform {
     this.log.warn('Unregistering', homebridgeAccessory.displayName)
 
     this.cachedAccessories.delete(homebridgeAccessory.UUID)
+    const deviceId = [...this.deviceInstances.entries()].find(
+      ([, device]) => device.context.UUID === homebridgeAccessory.UUID,
+    )?.[0]
+    if (deviceId) this.matterManager.remove(deviceId)
     this.api.unregisterPlatformAccessories(PLATFORM_NAME, PLATFORM_NAME, [homebridgeAccessory])
   }
 

@@ -842,9 +842,9 @@ Multi-switch accessories with debounced power switching to prevent rapid on/off 
 
 ### Infrared / RF Hubs
 
-Configure the physical hub, not the virtual child remotes shown by Tuya cloud. Learned cloud `learning_code` values can be copied into `hex`; local pulse data can be supplied as `base64`.
+Configure the physical hub, not the virtual child remotes shown by Tuya cloud. Learned cloud `learning_code` values can be copied into `hex`; local pulse data can be supplied as `base64`. RF child remotes can use the native Tuya `rfstudy_send` object in `rfPayload`.
 
-Cloud library remotes expose a cloud `key` and `key_id`, not a raw waveform. Those identifiers cannot be replayed by a cloud-free LAN client, so this plugin only exposes IR/RF buttons when a local `hex`, `base64`, or raw `learning_code` is configured. The physical hub can still be added and used for locally supplied codes.
+Cloud library remotes expose a cloud `key` and `key_id`, not a raw waveform. Those identifiers cannot be replayed by a cloud-free LAN client, so this plugin only exposes IR/RF buttons when a local `hex`, `base64`, raw `learning_code`, or native `rfPayload` is configured. The physical hub can still be added and used for locally supplied codes.
 
 ```json5
 {
@@ -860,6 +860,7 @@ Cloud library remotes expose a cloud `key` and `key_id`, not a raw waveform. Tho
       keys: [
         { name: 'Power', hex: '<Tuya cloud learning_code>' },
         { name: 'Volume Up', base64: '<local pulse data>' },
+        { name: 'Fan Power', rfPayload: { control: 'rfstudy_send', key1: { code: '<RF code>' } } },
       ],
     },
   ],

@@ -236,8 +236,10 @@ describe('TuyaAccessory', () => {
       const err: NodeJS.ErrnoException = new Error('reset')
       err.code = 'ECONNRESET'
       lastSocket.emit('error', err)
-      // Should have logged info and NOT destroyed the socket immediately
-      expect(log.info).toHaveBeenCalled()
+      expect(log.info).not.toHaveBeenCalled()
+      expect(log.debug).toHaveBeenCalledWith(
+        'Socket error for Test Device: ECONNRESET; reconnecting (consecutive failure 1)',
+      )
     })
   })
 
@@ -484,29 +486,31 @@ describe('TuyaAccessory', () => {
       return err
     }
 
-    it('reports the first socket error of an outage at info level', () => {
+    it('keeps a single transient socket error at debug level', () => {
       new TuyaAccessory({ ...makeProps({ connect: true }), log } as any)
 
       lastSocket.emit('error', socketError('ERR_CONNECTION_TIMED_OUT'))
 
-      expect(log.info).toHaveBeenCalledWith(
-        'Device Test Device became unreachable; attempting to reconnect (ERR_CONNECTION_TIMED_OUT)',
+      expect(log.info).not.toHaveBeenCalled()
+      expect(log.debug).toHaveBeenCalledWith(
+        'Socket error for Test Device: ERR_CONNECTION_TIMED_OUT; reconnecting (consecutive failure 1)',
       )
     })
 
-    it('sends every later socket error of the same outage to debug', () => {
+    it('reports an outage after two consecutive socket errors', () => {
       new TuyaAccessory({ ...makeProps({ connect: true }), log } as any)
 
       lastSocket.emit('error', socketError('ERR_CONNECTION_TIMED_OUT'))
       log.info.mockClear()
 
       lastSocket.emit('error', socketError('ERR_PING_TIMED_OUT'))
-      lastSocket.emit('error', socketError('EHOSTUNREACH'))
-      lastSocket.emit('error', socketError('ERR_CONNECTION_TIMED_OUT'))
 
-      expect(log.info).not.toHaveBeenCalled()
-      expect(log.debug).toHaveBeenCalledWith('Socket error for Test Device: ERR_PING_TIMED_OUT; reconnecting')
-      expect(log.debug).toHaveBeenCalledWith('Socket error for Test Device: EHOSTUNREACH; reconnecting')
+      expect(log.info).toHaveBeenCalledWith(
+        'Device Test Device became unreachable after 2 consecutive failures; attempting to reconnect (ERR_PING_TIMED_OUT)',
+      )
+      expect(log.debug).toHaveBeenCalledWith(
+        'Socket error for Test Device: ERR_CONNECTION_TIMED_OUT; reconnecting (consecutive failure 1)',
+      )
     })
 
     it('reports recovery with the outage duration once a valid state arrives', async () => {
@@ -517,6 +521,7 @@ describe('TuyaAccessory', () => {
 
       nowSpy.mockReturnValue(1_000_000)
       lastSocket.emit('error', socketError('ERR_PING_TIMED_OUT'))
+      lastSocket.emit('error', socketError('ERR_CONNECTION_TIMED_OUT'))
 
       nowSpy.mockReturnValue(1_000_000 + 82_000)
       lastSocket.emit('connect')
@@ -546,9 +551,10 @@ describe('TuyaAccessory', () => {
 
       log.info.mockClear()
       lastSocket.emit('error', socketError('EHOSTUNREACH'))
+      lastSocket.emit('error', socketError('ERR_CONNECTION_TIMED_OUT'))
 
       expect(log.info).toHaveBeenCalledWith(
-        'Device Test Device became unreachable; attempting to reconnect (EHOSTUNREACH)',
+        'Device Test Device became unreachable after 2 consecutive failures; attempting to reconnect (ERR_CONNECTION_TIMED_OUT)',
       )
 
       vi.useFakeTimers()
