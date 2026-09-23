@@ -86,6 +86,36 @@ describe('InfraredHubAccessory', () => {
       }),
     })
   })
+
+  it('keeps configured names, hides commands, and maps HomeKit service types', () => {
+    const device = createMockTuyaDevice({
+      name: 'IR Hub',
+      type: 'infraredhub',
+      remotes: [
+        {
+          name: 'Desk lamp',
+          keys: [
+            { name: 'Power', hex: '2a247811', serviceType: 'outlet' },
+            { name: 'Unused', hex: '2a247811', hidden: true },
+          ],
+        },
+        {
+          name: 'Irrigation',
+          keys: [{ name: 'Start', hex: '2a247811', serviceType: 'valve' }],
+        },
+      ],
+    } as any)
+    const accessory = createMockPlatformAccessory({ name: 'IR Hub' })
+    const platform = createPlatform()
+    new InfraredHubAccessory(platform, accessory, device, false)
+
+    const outlet = accessory.services.find((item: any) => item.subtype === 'ir-0-0')
+    const valve = accessory.services.find((item: any) => item.subtype === 'ir-1-0')
+    expect(outlet.displayName).toBe('IR Hub Desk lamp Power')
+    expect(outlet.UUID).toBe(platform.api.hap.Service.Outlet.UUID)
+    expect(valve.UUID).toBe(platform.api.hap.Service.Valve.UUID)
+    expect(accessory.services.some((item: any) => item.subtype === 'ir-0-1')).toBe(false)
+  })
 })
 
 describe('WirelessSwitchAccessory', () => {

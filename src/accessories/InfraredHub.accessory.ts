@@ -10,14 +10,25 @@ interface InfraredKeyConfig {
   rfPayload?: InfraredPayload | string
   payload?: InfraredPayload | string
   encoding?: 'hex' | 'base64'
-  type?: number
+  type?: number | string
+  serviceType?: string
+  accessoryType?: string
+  service?: string
+  hidden?: boolean
+  visible?: boolean
+  enabled?: boolean
 }
 
 interface InfraredRemoteConfig {
   name?: string
   keys?: InfraredKeyConfig[]
   remote_keys?: InfraredKeyConfig[]
+  hidden?: boolean
+  visible?: boolean
+  enabled?: boolean
 }
+
+type InfraredServiceType = 'switch' | 'outlet' | 'lightbulb' | 'fan' | 'valve'
 
 interface InfraredCommand {
   name: string
@@ -25,6 +36,8 @@ interface InfraredCommand {
   code?: string
   payload?: InfraredPayload
   type: number
+  serviceType: InfraredServiceType
+  hidden: boolean
 }
 
 type InfraredPayload = Record<string, unknown>
@@ -81,6 +94,31 @@ const normalizeRfPayload = (payload: InfraredPayload): InfraredPayload => {
   return normalized
 }
 
+const isDisabled = (value: unknown): boolean => value === true || value === 'true'
+
+const normalizeServiceType = (value: unknown): InfraredServiceType => {
+  const normalized = String(value || 'switch')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '')
+
+  switch (normalized) {
+    case 'outlet':
+      return 'outlet'
+    case 'light':
+    case 'lightbulb':
+      return 'lightbulb'
+    case 'fan':
+      return 'fan'
+    case 'valve':
+    case 'faucet':
+    case 'watervalve':
+      return 'valve'
+    default:
+      return 'switch'
+  }
+}
+
 class InfraredHubAccessory extends BaseAccessory {
   static getCategory(Categories: any): number {
     return Categories.SWITCH
@@ -106,23 +144,36 @@ class InfraredHubAccessory extends BaseAccessory {
     if (!Service.Switch || !Characteristic.On) return
 
     const commands = this._getCommands()
-    const validSubtypes = new Set(commands.map((command) => command.subtype))
+    const visibleCommands = commands.filter((command) => !command.hidden)
+    const commandsBySubtype = new Map(visibleCommands.map((command) => [command.subtype, command]))
+    const serviceTypes = ['switch', 'outlet', 'lightbulb', 'fan', 'valve'] as InfraredServiceType[]
+    const managedServiceUUIDs = new Set(
+      serviceTypes.map((serviceType) => this._getServiceClass(serviceType)?.UUID).filter(Boolean),
+    )
+
     this.accessory.services
       .filter(
         (service: any) =>
-          service.UUID === Service.Switch.UUID &&
+          managedServiceUUIDs.has(service.UUID) &&
           typeof service.subtype === 'string' &&
           service.subtype.startsWith('ir-'),
       )
-      .filter((service: any) => !validSubtypes.has(service.subtype))
+      .filter((service: any) => {
+        const command = commandsBySubtype.get(service.subtype)
+        return !command || this._getServiceClass(command.serviceType)?.UUID !== service.UUID
+      })
       .forEach((service: any) => this.accessory.removeService(service))
 
-    commands.forEach((command) => {
-      let service = this._getServiceByUUIDAndSubType(Service.Switch, command.subtype)
-      if (!service) service = this.accessory.addService(Service.Switch, command.name, command.subtype)
-      this._checkServiceName(service, command.name)
+    visibleCommands.forEach((command) => {
+      const serviceClass = this._getServiceClass(command.serviceType)
+      if (!serviceClass) return
 
-      const characteristic = service.getCharacteristic(Characteristic.On)
+      let service = this._getServiceByUUIDAndSubType(serviceClass, command.subtype)
+      if (!service) service = this.accessory.addService(serviceClass, command.name, command.subtype)
+      this._checkServiceName(service, command.name)
+      this._setConfiguredName(service, command.name)
+
+      const characteristic = service.getCharacteristic(this._getControlCharacteristic(command.serviceType))
       if ((service as any).__tuyaIrBound) return
       ;(service as any).__tuyaIrBound = true
       characteristic
@@ -138,15 +189,36 @@ class InfraredHubAccessory extends BaseAccessory {
           callback(sent ? null : new Error('IR hub is not connected'))
           if (sent) {
             setTimeout(() => {
+              const resetValue = command.serviceType === 'valve' ? 0 : false
               if (typeof characteristic.sendEventNotification === 'function') {
-                characteristic.sendEventNotification(false)
+                characteristic.sendEventNotification(resetValue)
               } else {
-                characteristic.updateValue(false)
+                characteristic.updateValue(resetValue)
               }
             }, 500)
           }
         })
     })
+  }
+
+  private _getServiceClass(serviceType: InfraredServiceType): any {
+    const { Service } = this.hap
+    return {
+      switch: Service.Switch,
+      outlet: Service.Outlet,
+      lightbulb: Service.Lightbulb,
+      fan: Service.Fan,
+      valve: Service.Valve,
+    }[serviceType]
+  }
+
+  private _getControlCharacteristic(serviceType: InfraredServiceType): any {
+    return serviceType === 'valve' ? this.hap.Characteristic.Active : this.hap.Characteristic.On
+  }
+
+  private _setConfiguredName(service: any, name: string): void {
+    const configuredName = this.hap.Characteristic.ConfiguredName
+    if (configuredName) service.getCharacteristic(configuredName).setValue(name)
   }
 
   private _send(command: InfraredCommand): boolean {
@@ -175,10 +247,20 @@ class InfraredHubAccessory extends BaseAccessory {
         try {
           const payload = getPayload(key)
           const keyName = (key.name || `Button ${keyIndex + 1}`).trim()
+          const configuredServiceType =
+            key.serviceType || key.accessoryType || key.service || (typeof key.type === 'string' ? key.type : undefined)
           const command = {
             name: `${this.device.context.name} ${remoteName} ${keyName}`,
             subtype: `ir-${remoteIndex}-${keyIndex}`,
             type: Number.isFinite(Number(key.type)) ? Number(key.type) : 0,
+            serviceType: normalizeServiceType(configuredServiceType),
+            hidden:
+              isDisabled(remote.hidden) ||
+              remote.visible === false ||
+              remote.enabled === false ||
+              isDisabled(key.hidden) ||
+              key.visible === false ||
+              key.enabled === false,
           }
           if (payload) {
             commands.push({ ...command, payload })

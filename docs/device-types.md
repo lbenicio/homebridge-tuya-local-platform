@@ -858,16 +858,16 @@ Cloud library remotes expose a cloud `key` and `key_id`, not a raw waveform. Tho
     {
       name: 'Living Room',
       keys: [
-        { name: 'Power', hex: '<Tuya cloud learning_code>' },
-        { name: 'Volume Up', base64: '<local pulse data>' },
-        { name: 'Fan Power', rfPayload: { control: 'rfstudy_send', key1: { code: '<RF code>' } } },
+        { name: 'Power', hex: '<Tuya cloud learning_code>', serviceType: 'outlet' },
+        { name: 'Volume Up', base64: '<local pulse data>', hidden: true },
+        { name: 'Fan Power', rfPayload: { control: 'rfstudy_send', key1: { code: '<RF code>' } }, serviceType: 'fan' },
       ],
     },
   ],
 }
 ```
 
-Each configured button appears as a momentary switch. The plugin sends the command to the physical hub over LAN; Tuya cloud child-device IDs are not contacted.
+Each visible configured button appears as a named momentary HomeKit service. Use `hidden: true` to keep a command out of Apple Home; Homebridge Config UI X accessory-layout hiding only affects the Homebridge UI. `serviceType` accepts `switch`, `outlet`, `lightbulb`, `fan`, or `valve` and controls the HomeKit service/icon. The plugin sends the command to the physical hub over LAN; Tuya cloud child-device IDs are not contacted.
 
 ### Wireless Switches
 

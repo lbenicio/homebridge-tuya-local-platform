@@ -66,6 +66,8 @@ export function createMockService() {
     Outlet: { UUID: 'outlet-uuid' },
     Lightbulb: { UUID: 'lightbulb-uuid' },
     Switch: { UUID: 'switch-uuid' },
+    Fan: { UUID: 'fan-service-uuid' },
+    Valve: { UUID: 'valve-service-uuid' },
     StatelessProgrammableSwitch: { UUID: 'stateless-switch-uuid' },
   }
 }

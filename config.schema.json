@@ -840,7 +840,26 @@
                           "description": "Native Tuya rfstudy_send JSON payload returned for an RF button.",
                           "additionalProperties": true
                         },
-                        "type": { "type": "integer", "default": 0 }
+                        "type": { "type": "integer", "default": 0 },
+                        "serviceType": {
+                          "type": "string",
+                          "title": "HomeKit service type",
+                          "description": "How Apple Home should display this momentary command.",
+                          "default": "switch",
+                          "oneOf": [
+                            { "title": "Switch", "enum": ["switch"] },
+                            { "title": "Outlet", "enum": ["outlet"] },
+                            { "title": "Light", "enum": ["lightbulb"] },
+                            { "title": "Fan", "enum": ["fan"] },
+                            { "title": "Valve", "enum": ["valve"] }
+                          ]
+                        },
+                        "hidden": {
+                          "type": "boolean",
+                          "title": "Hide from Apple Home",
+                          "description": "Do not create this command as a HomeKit service.",
+                          "default": false
+                        }
                       }
                     }
                   }
