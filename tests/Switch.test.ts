@@ -110,6 +110,28 @@ describe('SwitchAccessory', () => {
       expect(service3).toBeDefined()
     })
 
+    it('uses per-switch HomeKit service overrides', () => {
+      const { switchAcc, accessory, Service } = createSwitch({
+        switchCount: '3',
+        homeKitServices: [
+          { id: 'switch 1', type: 'lightbulb' },
+          { id: 'switch 2', type: 'outlet' },
+          { id: 'switch 3', type: 'switch' },
+        ],
+      })
+
+      switchAcc._registerPlatformAccessory()
+
+      expect(accessory.getServiceByUUIDAndSubType(Service.Lightbulb, 'switch 1')).toBeDefined()
+      expect(accessory.getServiceByUUIDAndSubType(Service.Outlet, 'switch 2')).toBeDefined()
+      expect(accessory.getServiceByUUIDAndSubType(Service.Switch, 'switch 3')).toBeDefined()
+      expect(
+        accessory.services.some(
+          (service: any) => service.UUID === Service.Switch.UUID && service.subtype === 'switch 1',
+        ),
+      ).toBe(false)
+    })
+
     it('registers characteristics for all switches', () => {
       const { switchAcc, accessory, Service, Characteristic } = createSwitch({ switchCount: '3' })
 

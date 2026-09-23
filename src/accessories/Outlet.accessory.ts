@@ -13,16 +13,16 @@ class OutletAccessory extends BaseAccessory {
   }
 
   _registerPlatformAccessory(): void {
-    const { Service } = this.hap
-
-    this.accessory.addService(Service.Outlet, this.device.context.name)
+    const serviceType = this._getHomeKitServiceType('primary', 'outlet')
+    this._getPrimaryHomeKitPowerService(serviceType, this.device.context.name)
 
     super._registerPlatformAccessory()
   }
 
   _registerCharacteristics(dps: DPSState): void {
-    const { Service, Characteristic, EnergyCharacteristics } = this.hap
-    const service = this.accessory.getService(Service.Outlet)
+    const { Characteristic, EnergyCharacteristics } = this.hap
+    const serviceType = this._getHomeKitServiceType('primary', 'outlet')
+    const service = this._getPrimaryHomeKitPowerService(serviceType, this.device.context.name)
     this._checkServiceName(service, this.device.context.name)
 
     this.dpPower = this._getCustomDP(this.device.context.dpPower) || '1'

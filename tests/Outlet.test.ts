@@ -77,6 +77,15 @@ describe('OutletAccessory', () => {
 
       expect(outlet.dpPower).toBe('5')
     })
+
+    it('uses the configured HomeKit service type', () => {
+      const { outlet, accessory, Service } = createOutlet({ homeKitType: 'lightbulb' })
+
+      outlet._registerPlatformAccessory()
+
+      expect(accessory.getService(Service.Lightbulb)).toBeDefined()
+      expect(accessory.getService(Service.Outlet)).toBeUndefined()
+    })
   })
 
   describe('power control', () => {

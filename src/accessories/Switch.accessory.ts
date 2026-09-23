@@ -29,20 +29,31 @@ class SwitchAccessory extends BaseAccessory {
   _verifyCachedPlatformAccessory(): void {
     if (this._justRegistered) return
 
-    const { Service } = this.hap
-
     const switchCount = parseInt(this.device.context.switchCount) || 1
     const _validServices: any[] = []
     for (let i = 0; i++ < switchCount; ) {
-      let service = this._getServiceByUUIDAndSubType(Service.Switch, 'switch ' + i)
+      const subtype = 'switch ' + i
+      const serviceType = this._getHomeKitServiceType(subtype, 'switch')
+      const serviceClass = this._getHomeKitPowerServiceClass(serviceType)
+      let service = this._getServiceByUUIDAndSubType(serviceClass, subtype)
+      const staleService = this._getServiceBySubtype(subtype)
+      if (!service && staleService) {
+        this.accessory.removeService(staleService)
+      }
       if (service) this._checkServiceName(service, this.device.context.name + ' ' + i)
-      else service = this.accessory.addService(Service.Switch, this.device.context.name + ' ' + i, 'switch ' + i)
+      else service = this.accessory.addService(serviceClass, this.device.context.name + ' ' + i, subtype)
 
       _validServices.push(service)
     }
 
+    const serviceUUIDs = this._getHomeKitPowerServiceUUIDs()
     this.accessory.services
-      .filter((service: any) => service.UUID === Service.Switch.UUID && !_validServices.includes(service))
+      .filter(
+        (service: any) =>
+          serviceUUIDs.has(service.UUID) &&
+          /^switch \d+$/.test(service.subtype || '') &&
+          !_validServices.includes(service),
+      )
       .forEach((service: any) => {
         this.log.info('Removing', service.displayName)
         this.accessory.removeService(service)
@@ -52,11 +63,12 @@ class SwitchAccessory extends BaseAccessory {
   _registerCharacteristics(dps: DPSState): void {
     this._verifyCachedPlatformAccessory()
 
-    const { Service, Characteristic } = this.hap
+    const { Characteristic } = this.hap
 
     const characteristics: Record<string, any> = {}
+    const serviceUUIDs = this._getHomeKitPowerServiceUUIDs()
     this.accessory.services.forEach((service: any) => {
-      if (service.UUID !== Service.Switch.UUID || !service.subtype) return false
+      if (!serviceUUIDs.has(service.UUID) || !service.subtype) return false
 
       let match: RegExpMatchArray | null
       if ((match = service.subtype.match(/^switch (\d+)$/)) === null) return

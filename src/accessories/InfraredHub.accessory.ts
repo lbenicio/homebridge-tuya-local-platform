@@ -247,13 +247,18 @@ class InfraredHubAccessory extends BaseAccessory {
         try {
           const payload = getPayload(key)
           const keyName = (key.name || `Button ${keyIndex + 1}`).trim()
+          const subtype = `ir-${remoteIndex}-${keyIndex}`
           const configuredServiceType =
             key.serviceType || key.accessoryType || key.service || (typeof key.type === 'string' ? key.type : undefined)
           const command = {
             name: `${this.device.context.name} ${remoteName} ${keyName}`,
-            subtype: `ir-${remoteIndex}-${keyIndex}`,
+            subtype,
             type: Number.isFinite(Number(key.type)) ? Number(key.type) : 0,
-            serviceType: normalizeServiceType(configuredServiceType),
+            serviceType: normalizeServiceType(
+              this._getHomeKitServiceOverride(subtype) ||
+                (this.device.context.homeKitType !== 'default' ? this.device.context.homeKitType : undefined) ||
+                configuredServiceType,
+            ),
             hidden:
               isDisabled(remote.hidden) ||
               remote.visible === false ||

@@ -869,6 +869,25 @@ Cloud library remotes expose a cloud `key` and `key_id`, not a raw waveform. Tho
 
 Each visible configured button appears as a named momentary HomeKit service. Use `hidden: true` to keep a command out of Apple Home; Homebridge Config UI X accessory-layout hiding only affects the Homebridge UI. `serviceType` accepts `switch`, `outlet`, `lightbulb`, `fan`, or `valve` and controls the HomeKit service/icon. The plugin sends the command to the physical hub over LAN; Tuya cloud child-device IDs are not contacted.
 
+### HomeKit service overrides
+
+Apple Home uses the HomeKit service emitted by the plugin, not the visual type of a Homebridge UI tile. Compatible power services can be changed with `homeKitType` or per-service `homeKitServices` overrides:
+
+```json5
+{
+  name: 'Wall Switch',
+  type: 'Switch',
+  switchCount: 3,
+  homeKitServices: [
+    { id: 'switch 1', type: 'lightbulb' },
+    { id: 'switch 2', type: 'outlet' },
+    { id: 'switch 3', type: 'switch' },
+  ],
+}
+```
+
+This currently applies to on/off services exposed by `Switch`, `MultiOutlet`, `CustomMultiOutlet`, `Outlet`, `SimpleLight`, and IR/RF commands. The supported mappings are `switch`, `outlet`, `lightbulb`, and `fan`. Services such as sensors, thermostats, blinds, and color/brightness controls retain their specialized HomeKit types because changing them would remove required characteristics or create a misleading control.
+
 ### Wireless Switches
 
 `WirelessSwitch` exposes button events from a directly addressable wireless switch or a Zigbee child routed through a gateway. Gateway children share the gateway's local key, IP, and LAN connection; add `parentId` and the child's `cid`/`nodeId`.

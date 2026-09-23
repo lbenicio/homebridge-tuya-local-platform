@@ -30,20 +30,29 @@ class MultiOutletAccessory extends BaseAccessory {
   _verifyCachedPlatformAccessory(): void {
     if (this._justRegistered) return
 
-    const { Service } = this.hap
-
     const outletCount = parseInt(this.device.context.outletCount) || 1
     const _validServices: any[] = []
     for (let i = 0; i++ < outletCount; ) {
-      let service = this.accessory.getServiceByUUIDAndSubType(Service.Outlet, 'outlet ' + i)
+      const subtype = 'outlet ' + i
+      const serviceType = this._getHomeKitServiceType(subtype, 'outlet')
+      const serviceClass = this._getHomeKitPowerServiceClass(serviceType)
+      let service = this._getServiceByUUIDAndSubType(serviceClass, subtype)
+      const staleService = this._getServiceBySubtype(subtype)
+      if (!service && staleService) this.accessory.removeService(staleService)
       if (service) this._checkServiceName(service, this.device.context.name + ' ' + i)
-      else service = this.accessory.addService(Service.Outlet, this.device.context.name + ' ' + i, 'outlet ' + i)
+      else service = this.accessory.addService(serviceClass, this.device.context.name + ' ' + i, subtype)
 
       _validServices.push(service)
     }
 
+    const serviceUUIDs = this._getHomeKitPowerServiceUUIDs()
     this.accessory.services
-      .filter((service: any) => service.UUID === Service.Outlet.UUID && !_validServices.includes(service))
+      .filter(
+        (service: any) =>
+          serviceUUIDs.has(service.UUID) &&
+          /^outlet \d+$/.test(service.subtype || '') &&
+          !_validServices.includes(service),
+      )
       .forEach((service: any) => {
         this.log.info('Removing', service.displayName)
         this.accessory.removeService(service)
@@ -53,11 +62,12 @@ class MultiOutletAccessory extends BaseAccessory {
   _registerCharacteristics(dps: DPSState): void {
     this._verifyCachedPlatformAccessory()
 
-    const { Service, Characteristic } = this.hap
+    const { Characteristic } = this.hap
 
     const characteristics: Record<string, any> = {}
+    const serviceUUIDs = this._getHomeKitPowerServiceUUIDs()
     this.accessory.services.forEach((service: any) => {
-      if (service.UUID !== Service.Outlet.UUID || !service.subtype) return false
+      if (!serviceUUIDs.has(service.UUID) || !service.subtype) return false
 
       let match: RegExpMatchArray | null
       if ((match = service.subtype.match(/^outlet (\d+)$/)) === null) return

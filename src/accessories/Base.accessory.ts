@@ -7,6 +7,10 @@ import type {
 import type TuyaAccessory from '../protocol/TuyaAccessory'
 import type { DPSState, DPSValue, HAPContext, HomebridgeCallback, HSBColor } from '../types'
 
+export type HomeKitPowerServiceType = 'switch' | 'outlet' | 'lightbulb' | 'fan'
+
+const HOMEKIT_POWER_SERVICE_TYPES: HomeKitPowerServiceType[] = ['switch', 'outlet', 'lightbulb', 'fan']
+
 class BaseAccessory {
   platform: any
   accessory: PlatformAccessory
@@ -74,6 +78,76 @@ class BaseAccessory {
 
     const uuid = typeof serviceType === 'object' ? serviceType.UUID : serviceType
     return this.accessory.services.find((service: any) => service.UUID === uuid && service.subtype === subtype)
+  }
+
+  _getHomeKitServiceType(
+    serviceId: string,
+    fallback: HomeKitPowerServiceType,
+    supported: HomeKitPowerServiceType[] = HOMEKIT_POWER_SERVICE_TYPES,
+  ): HomeKitPowerServiceType {
+    const value =
+      this._getHomeKitServiceOverride(serviceId) ??
+      (this.device.context.homeKitType !== 'default' ? this.device.context.homeKitType : undefined)
+
+    const normalized = String(value || fallback)
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '')
+    const aliases: Record<string, HomeKitPowerServiceType> = {
+      switch: 'switch',
+      outlet: 'outlet',
+      light: 'lightbulb',
+      lightbulb: 'lightbulb',
+      fan: 'fan',
+    }
+    const serviceType = aliases[normalized]
+    return serviceType && supported.includes(serviceType) ? serviceType : fallback
+  }
+
+  _getHomeKitServiceOverride(serviceId: string): unknown {
+    const configured = this.device.context.homeKitServices
+    if (Array.isArray(configured)) {
+      const override = configured.find(
+        (item: any) => item && (item.id === serviceId || item.subtype === serviceId || item.service === serviceId),
+      )
+      return override?.type || override?.serviceType
+    }
+    if (configured && typeof configured === 'object') return (configured as Record<string, unknown>)[serviceId]
+    return undefined
+  }
+
+  _getHomeKitPowerServiceClass(serviceType: HomeKitPowerServiceType): any {
+    return {
+      switch: this.hap.Service.Switch,
+      outlet: this.hap.Service.Outlet,
+      lightbulb: this.hap.Service.Lightbulb,
+      fan: this.hap.Service.Fan,
+    }[serviceType]
+  }
+
+  _getHomeKitPowerServiceUUIDs(): Set<string> {
+    return new Set(
+      HOMEKIT_POWER_SERVICE_TYPES.map((serviceType) => this._getHomeKitPowerServiceClass(serviceType)?.UUID).filter(
+        Boolean,
+      ),
+    )
+  }
+
+  _getServiceBySubtype(subtype: string, serviceUUIDs = this._getHomeKitPowerServiceUUIDs()): any {
+    return this.accessory.services.find((service: any) => serviceUUIDs.has(service.UUID) && service.subtype === subtype)
+  }
+
+  _getPrimaryHomeKitPowerService(serviceType: HomeKitPowerServiceType, name: string): any {
+    const serviceClass = this._getHomeKitPowerServiceClass(serviceType)
+    let service = this.accessory.getService(serviceClass)
+    if (!service) {
+      const serviceUUIDs = this._getHomeKitPowerServiceUUIDs()
+      this.accessory.services
+        .filter((item: any) => !item.subtype && serviceUUIDs.has(item.UUID) && item.UUID !== serviceClass.UUID)
+        .forEach((item: any) => this.accessory.removeService(item))
+      service = this.accessory.addService(serviceClass, name)
+    }
+    return service
   }
 
   _removeCharacteristic(service: HAPService, characteristicType: WithUUID<new () => HAPCharacteristic>): void {

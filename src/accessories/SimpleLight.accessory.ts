@@ -13,16 +13,16 @@ class SimpleLightAccessory extends BaseAccessory {
   }
 
   _registerPlatformAccessory(): void {
-    const { Service } = this.hap
-
-    this.accessory.addService(Service.Lightbulb, this.device.context.name)
+    const serviceType = this._getHomeKitServiceType('primary', 'lightbulb')
+    this._getPrimaryHomeKitPowerService(serviceType, this.device.context.name)
 
     super._registerPlatformAccessory()
   }
 
   _registerCharacteristics(dps: DPSState): void {
-    const { Service, Characteristic } = this.hap
-    const service = this.accessory.getService(Service.Lightbulb)
+    const { Characteristic } = this.hap
+    const serviceType = this._getHomeKitServiceType('primary', 'lightbulb')
+    const service = this._getPrimaryHomeKitPowerService(serviceType, this.device.context.name)
     this._checkServiceName(service, this.device.context.name)
 
     this.dpPower = this._getCustomDP(this.device.context.dpPower) || '1'
