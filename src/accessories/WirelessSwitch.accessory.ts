@@ -33,6 +33,7 @@ class WirelessSwitchAccessory extends BaseAccessory {
     this.device.on('change', (changes: DPSState, state: DPSState) => {
       this._getSwitchServices().forEach(({ service, dp }) => {
         if (!Object.prototype.hasOwnProperty.call(changes, dp)) return
+        this.log.info(`${this.device.context.name} received wireless event on DP ${dp}: ${JSON.stringify(state[dp])}`)
         this._updateEvent(service.getCharacteristic(Characteristic.ProgrammableSwitchEvent), state[dp])
       })
     })

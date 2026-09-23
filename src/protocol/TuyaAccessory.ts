@@ -659,6 +659,21 @@ class TuyaAccessory extends EventEmitter {
         break
 
       case 64:
+        if (parsedPayload && typeof parsedPayload === 'object') {
+          const payload = parsedPayload as {
+            dps?: DPSState
+            cid?: string
+            devId?: string
+            data?: { cid?: string; devid?: string; dps?: DPSState }
+          }
+          const dps = payload.dps || payload.data?.dps
+          if (dps)
+            this._changePayload({
+              cid: payload.cid || payload.data?.cid,
+              devId: payload.devId || payload.data?.devid,
+              dps,
+            })
+        }
         this.emit('payload', parsedPayload)
         break
 
@@ -884,8 +899,9 @@ class TuyaAccessory extends EventEmitter {
     this._reportReachable()
 
     const changes: DPSState = {}
+    const repeatWirelessEvents = (this.context.type || '').toLowerCase() === 'wirelessswitch'
     Object.keys(data).forEach((key) => {
-      if (data[key] !== this.state[key]) {
+      if (data[key] !== this.state[key] || repeatWirelessEvents) {
         changes[key] = data[key]
       }
     })

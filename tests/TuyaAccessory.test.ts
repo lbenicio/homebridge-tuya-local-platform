@@ -293,6 +293,16 @@ describe('TuyaAccessory', () => {
       expect(child.update({ '1': true })).toBe(true)
       expect(lastSocket.write).toHaveBeenCalled()
     })
+
+    it('emits repeated wireless switch events when the value is unchanged', () => {
+      const accessory = new TuyaAccessory(makeProps({ type: 'WirelessSwitch', connect: false }) as any)
+      const change = vi.fn()
+      accessory.on('change', change)
+      ;(accessory as any)._change({ '1': 'single_click' })
+      ;(accessory as any)._change({ '1': 'single_click' })
+
+      expect(change).toHaveBeenCalledTimes(2)
+    })
   })
 
   // ── Message handler 3.1 via simulated "data" events ──────────────────────────
