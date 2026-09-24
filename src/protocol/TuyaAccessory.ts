@@ -784,8 +784,8 @@ class TuyaAccessory extends EventEmitter {
     }
 
     let result: boolean | undefined
+    const t = (Date.now() / 1000).toFixed(0)
     if (hasDataPoint) {
-      const t = (Date.now() / 1000).toFixed(0)
       const modern = this.context.version === '3.4' || this.context.version === '3.5'
       const cid = this.context.cid || this.context.nodeId
       const payload: Record<string, unknown> = this._parent
@@ -818,6 +818,8 @@ class TuyaAccessory extends EventEmitter {
           : {
               gwId: this.context.id,
               devId: this.context.id,
+              uid: this.context.id,
+              t,
             },
         cmd: modern ? 16 : 10,
       })

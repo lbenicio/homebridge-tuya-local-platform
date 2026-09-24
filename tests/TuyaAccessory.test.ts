@@ -259,6 +259,24 @@ describe('TuyaAccessory', () => {
       expect(lastSocket.write).toHaveBeenCalled()
     })
 
+    it('includes the complete v3.3 status query payload', () => {
+      const acc = new TuyaAccessory(makeProps({ connect: true }) as any)
+      lastSocket.emit('connect')
+      acc.update()
+
+      const frame = lastSocket.write.mock.calls.at(-1)[0] as Buffer
+      const encrypted = frame.subarray(16, frame.length - 8)
+      const decipher = crypto.createDecipheriv('aes-128-ecb', 'abcdef1234567890', '')
+      const payload = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')
+
+      expect(JSON.parse(payload)).toEqual({
+        gwId: 'device-001',
+        devId: 'device-001',
+        uid: 'device-001',
+        t: expect.any(String),
+      })
+    })
+
     it('_send writes to socket after connection (v3.1)', () => {
       const acc = new TuyaAccessory(makeProps({ connect: true, version: '3.1' }) as any)
       lastSocket.emit('connect')
