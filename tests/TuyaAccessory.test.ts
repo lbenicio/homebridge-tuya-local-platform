@@ -297,6 +297,29 @@ describe('TuyaAccessory', () => {
       })
     })
 
+    it('ignores the empty device22 acknowledgment and keeps the connection usable', () => {
+      const acc = new TuyaAccessory(makeProps({ connect: true }) as any)
+      lastSocket.emit('connect')
+      log.info.mockClear()
+      ;(acc as any)._msgHandler_3_3({ msg: buildFrame(13, Buffer.alloc(0)) }, vi.fn())
+
+      expect(log.info).not.toHaveBeenCalled()
+    })
+
+    it('polls configured status at the requested interval', () => {
+      const acc = new TuyaAccessory(makeProps({ connect: true, statusPollInterval: 30, pingTimeout: 300 }) as any)
+      lastSocket.emit('connect')
+      vi.advanceTimersByTime(1000)
+      lastSocket.write.mockClear()
+
+      vi.advanceTimersByTime(28999)
+      expect(lastSocket.write).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1001)
+      expect(lastSocket.write).toHaveBeenCalledTimes(1)
+      expect(acc.connected).toBe(true)
+    })
+
     it('_send writes to socket after connection (v3.1)', () => {
       const acc = new TuyaAccessory(makeProps({ connect: true, version: '3.1' }) as any)
       lastSocket.emit('connect')

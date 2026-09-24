@@ -51,6 +51,7 @@ class TuyaAccessory extends EventEmitter {
     connectTimeout?: number
     intro?: boolean
     sendEmptyUpdate?: boolean
+    statusPollInterval?: number
     fake?: boolean
   }
   state: DPSState = {}
@@ -69,6 +70,7 @@ class TuyaAccessory extends EventEmitter {
   private _parent: TuyaAccessory | null = null
   private _children = new Map<string, TuyaAccessory>()
   private _device22 = false
+  private _statusPollTimer: ReturnType<typeof setInterval> | null = null
   session_key: Buffer | null = null
 
   constructor(
@@ -203,6 +205,7 @@ class TuyaAccessory extends EventEmitter {
 
         this.connected = true
         this.emit('connect')
+        this._startStatusPolling()
         if (this._socket._pinger) clearTimeout(this._socket._pinger)
         this._socket._pinger = setTimeout(() => this._socket._ping(), 1000)
 
@@ -259,6 +262,7 @@ class TuyaAccessory extends EventEmitter {
     this._socket.on('error', (err: NodeJS.ErrnoException) => {
       this._disconnectChildren()
       this.connected = false
+      this._stopStatusPolling()
       this._reportUnreachable(err)
 
       if (err && (err.code === 'ECONNRESET' || err.code === 'EPIPE') && this._connectionAttempts < 10) {
@@ -296,12 +300,14 @@ class TuyaAccessory extends EventEmitter {
     this._socket.on('close', () => {
       this._disconnectChildren()
       this.connected = false
+      this._stopStatusPolling()
       this.session_key = null
     })
 
     this._socket.on('end', () => {
       this._disconnectChildren()
       this.connected = false
+      this._stopStatusPolling()
       this.session_key = null
       this.log.info('Disconnected from', this.context.name)
     })
@@ -318,18 +324,38 @@ class TuyaAccessory extends EventEmitter {
     if (!this._parent?.connected || this.connected) return
     this.connected = true
     this.emit('connect')
+    this._startStatusPolling()
     this.update()
   }
 
   private _disconnectFromParent(): void {
     if (!this.connected) return
     this.connected = false
+    this._stopStatusPolling()
     this.emit('disconnect')
   }
 
   private _disconnectChildren(): void {
     const children = new Set(this._children.values())
     children.forEach((child) => child._disconnectFromParent())
+  }
+
+  private _startStatusPolling(): void {
+    this._stopStatusPolling()
+
+    const interval = Number(this.context.statusPollInterval)
+    if (!Number.isFinite(interval) || interval <= 0) return
+
+    this._statusPollTimer = setInterval(() => {
+      if (this.connected) this.update()
+    }, interval * 1000)
+    this._statusPollTimer.unref?.()
+  }
+
+  private _stopStatusPolling(): void {
+    if (!this._statusPollTimer) return
+    clearInterval(this._statusPollTimer)
+    this._statusPollTimer = null
   }
 
   private _incrementAttemptCounter(): void {
@@ -472,6 +498,8 @@ class TuyaAccessory extends EventEmitter {
       versionPos === -1 ? len - size + (task.msg.readUInt32BE(16) & 0xffffff00 ? 0 : 4) : 15 + versionPos,
       len - 8,
     )
+
+    if (cmd === 13 && cleanMsg.length === 0) return callback()
 
     let decryptedMsg: string
     try {
@@ -634,6 +662,7 @@ class TuyaAccessory extends EventEmitter {
       this.connected = true
       this.update()
       this.emit('connect')
+      this._startStatusPolling()
       if (this._socket._pinger) clearTimeout(this._socket._pinger)
       this._socket._pinger = setTimeout(() => this._socket._ping(), 1000)
 

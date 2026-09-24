@@ -261,6 +261,15 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
             },
+            "statusPollInterval": {
+              "title": "Status Poll Interval (seconds)",
+              "description": "Continuously request fresh DPS values for sleeping devices. Leave blank or set 0 to rely only on unsolicited LAN updates.",
+              "type": "integer",
+              "minimum": 0,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TemperatureHumiditySensor','CircuitBreakerMonitor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "parentId": {
               "title": "Parent Gateway ID",
               "description": "Tuya ID of the local gateway when this device is a Zigbee child. The child shares the gateway LAN connection.",
