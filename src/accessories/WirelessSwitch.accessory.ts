@@ -17,14 +17,13 @@ class WirelessSwitchAccessory extends BaseAccessory {
     super._registerPlatformAccessory()
   }
 
-  _registerCharacteristics(dps: DPSState): void {
+  _registerCharacteristics(_dps: DPSState): void {
     this._ensureServices()
     const { Service, Characteristic } = this.hap
     if (!Service.StatelessProgrammableSwitch || !Characteristic.ProgrammableSwitchEvent) return
 
-    this._getSwitchServices().forEach(({ service, dp }) => {
+    this._getSwitchServices().forEach(({ service }) => {
       const characteristic = service.getCharacteristic(Characteristic.ProgrammableSwitchEvent)
-      if (Object.prototype.hasOwnProperty.call(dps, dp)) this._updateEvent(characteristic, dps[dp])
       if ((service as any).__tuyaWirelessBound) return
       ;(service as any).__tuyaWirelessBound = true
       characteristic.on('get', (callback: HomebridgeCallback) => callback(null, 0))

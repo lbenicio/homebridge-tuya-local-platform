@@ -119,7 +119,7 @@ describe('InfraredHubAccessory', () => {
 })
 
 describe('WirelessSwitchAccessory', () => {
-  it('maps double-click state to a stateless HomeKit event', () => {
+  it('does not treat the initial cached state as a button press', () => {
     const device = createMockTuyaDevice({
       name: 'Remote',
       type: 'wirelessswitch',
@@ -128,10 +128,15 @@ describe('WirelessSwitchAccessory', () => {
     const accessory = createMockPlatformAccessory({ name: 'Remote' })
     const platform = createPlatform()
     const remote = new WirelessSwitchAccessory(platform, accessory, device, false)
-    remote._registerCharacteristics({ '1': 'double_click' })
+    remote._registerCharacteristics({ '1': 'single_click' })
 
     const service = accessory.services.find((item: any) => item.subtype === 'wireless-1')
-    expect(service.getCharacteristic(platform.api.hap.Characteristic.ProgrammableSwitchEvent).value).toBe(1)
+    const characteristic = service.getCharacteristic(platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+    expect(characteristic.value).toBeUndefined()
+
+    device.state = { '1': 'double_click' }
+    device.emit('change', { '1': 'double_click' }, device.state)
+    expect(characteristic.value).toBe(1)
   })
 })
 
