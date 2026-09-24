@@ -83,6 +83,17 @@ export interface TuyaPlatformConfig {
   platform: string
   name?: string
   devices: TuyaDeviceConfig[]
+  linkedSwitchGroups?: LinkedSwitchGroup[]
+}
+
+export interface LinkedSwitchMember {
+  deviceId: string
+  dp: number | string
+}
+
+export interface LinkedSwitchGroup {
+  name?: string
+  members: LinkedSwitchMember[]
 }
 
 export type HomebridgeCallback = (err?: Error | null, value?: CharacteristicValue) => void

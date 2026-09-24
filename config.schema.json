@@ -12,6 +12,42 @@
         "title": "Platform Name",
         "default": "TuyaLocalPlatform"
       },
+      "linkedSwitchGroups": {
+        "type": "array",
+        "title": "Linked Switch Groups",
+        "description": "Propagate a physical state change between selected local switch data points. This creates local three-way behavior without relying on Apple Home automations.",
+        "orderable": false,
+        "items": {
+          "type": "object",
+          "required": ["members"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Group Name"
+            },
+            "members": {
+              "type": "array",
+              "title": "Switch Members",
+              "minItems": 2,
+              "orderable": false,
+              "items": {
+                "type": "object",
+                "required": ["deviceId", "dp"],
+                "properties": {
+                  "deviceId": {
+                    "type": "string",
+                    "title": "Device ID"
+                  },
+                  "dp": {
+                    "type": "integer",
+                    "title": "Data Point"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "devices": {
         "type": "array",
         "orderable": false,

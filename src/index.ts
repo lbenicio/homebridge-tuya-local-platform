@@ -1,6 +1,7 @@
 import TuyaAccessory from './protocol/TuyaAccessory'
 import TuyaDiscovery from './protocol/TuyaDiscovery'
 import MatterAccessoryManager from './MatterAccessoryManager'
+import LinkedSwitchManager from './LinkedSwitchManager'
 
 import {
   EnergyCharacteristicsFactory,
@@ -102,6 +103,7 @@ class TuyaLocalPlatform {
   config: TuyaPlatformConfig
   api: any
   matterManager: MatterAccessoryManager
+  linkedSwitchManager: LinkedSwitchManager
   cachedAccessories: Map<string, any>
   deviceInstances: Map<string, TuyaAccessory>
   _expectedUUIDs?: string[]
@@ -112,6 +114,7 @@ class TuyaLocalPlatform {
     this.cachedAccessories = new Map()
     this.deviceInstances = new Map()
     this.matterManager = new MatterAccessoryManager(this.api, this.log)
+    this.linkedSwitchManager = new LinkedSwitchManager(this.log)
     this.api.hap.EnergyCharacteristics = EnergyCharacteristicsFactory(this.api.hap.Characteristic)
 
     if (!this.config || !this.config.devices) {
@@ -212,6 +215,8 @@ class TuyaLocalPlatform {
       this.addDeviceAccessory(devices[deviceId], deviceId)
     })
 
+    this.linkedSwitchManager.bind(this.config.linkedSwitchGroups, this.deviceInstances)
+
     cachedOnlyIds.forEach((deviceId) => {
       connectedDevices.push(deviceId)
       this.log.info('Adding cached-only device %s (%s).', devices[deviceId].name, deviceId)
@@ -248,6 +253,7 @@ class TuyaLocalPlatform {
           config.id,
           'discovered accessory',
         )
+        this.linkedSwitchManager.bind(this.config.linkedSwitchGroups, this.deviceInstances)
       })
     }
 
@@ -279,6 +285,7 @@ class TuyaLocalPlatform {
           )
 
           this.addDeviceAccessory(devices[deviceId], deviceId)
+          this.linkedSwitchManager.bind(this.config.linkedSwitchGroups, this.deviceInstances)
         } else {
           this.log.warn('Failed to discover %s (%s) in time but will keep looking.', devices[deviceId].name, deviceId)
         }
