@@ -277,6 +277,26 @@ describe('TuyaAccessory', () => {
       })
     })
 
+    it('falls back to a device22 DP query after an invalid status response', () => {
+      const acc = new TuyaAccessory(makeProps({ connect: true, initialState: { '1': 24, '2': 68, '3': 0 } }) as any)
+      lastSocket.emit('connect')
+      lastSocket.write.mockClear()
+      ;(acc as any)._msgHandler_3_3({ msg: buildFrame(10, Buffer.from('json obj data unvalid')) }, vi.fn())
+
+      expect((acc as any)._device22).toBe(true)
+      const frame = lastSocket.write.mock.calls.at(-1)[0] as Buffer
+      expect(frame.readUInt32BE(8)).toBe(13)
+
+      const encrypted = frame.subarray(31, frame.length - 8)
+      const decipher = crypto.createDecipheriv('aes-128-ecb', 'abcdef1234567890', '')
+      const payload = JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8'))
+      expect(payload).toMatchObject({
+        devId: 'device-001',
+        uid: 'device-001',
+        dps: { '1': null, '2': null, '3': null },
+      })
+    })
+
     it('_send writes to socket after connection (v3.1)', () => {
       const acc = new TuyaAccessory(makeProps({ connect: true, version: '3.1' }) as any)
       lastSocket.emit('connect')

@@ -1,6 +1,6 @@
 {
   "name": "@lbenicio/homebridge-tuya-local-platform",
-  "version": "1.7.2-lbenicio.26",
+  "version": "1.7.2-lbenicio.27",
   "description": "Homebridge plugin to control Tuya devices locally over LAN",
   "repository": {
     "type": "git",

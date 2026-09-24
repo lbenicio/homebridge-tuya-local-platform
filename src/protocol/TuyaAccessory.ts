@@ -68,6 +68,7 @@ class TuyaAccessory extends EventEmitter {
   private _tmpRemoteKey: Buffer | null = null
   private _parent: TuyaAccessory | null = null
   private _children = new Map<string, TuyaAccessory>()
+  private _device22 = false
   session_key: Buffer | null = null
 
   constructor(
@@ -482,6 +483,9 @@ class TuyaAccessory extends EventEmitter {
     }
 
     if (cmd === 10 && decryptedMsg === 'json obj data unvalid') {
+      this._device22 = true
+      this.log.debug(`Device ${this.context.name} requires a device22 status query.`)
+      this.update()
       this._logOutageDetail(`${this.context.name} (${this.context.version}) didn't respond with its current state.`)
       this.emit('change', {}, this.state)
       return callback()
@@ -502,6 +506,7 @@ class TuyaAccessory extends EventEmitter {
     switch (cmd) {
       case 8:
       case 10:
+      case 13:
         if (data) {
           if (data.dps) {
             this._changePayload(data)
@@ -810,22 +815,41 @@ class TuyaAccessory extends EventEmitter {
     } else {
       const modern = this.context.version === '3.4' || this.context.version === '3.5'
       const cid = this.context.cid || this.context.nodeId
-      result = this._send({
-        data: this._parent
-          ? modern
-            ? { cid: cid || this.context.id }
-            : { t: Number((Date.now() / 1000).toFixed(0)), cid: cid || this.context.id }
-          : {
-              gwId: this.context.id,
-              devId: this.context.id,
-              uid: this.context.id,
-              t,
-            },
-        cmd: modern ? 16 : 10,
-      })
+      const statusDps = this._getStatusDps()
+      if (!this._parent && this.context.version === '3.3' && this._device22 && statusDps.length > 0) {
+        const dps = statusDps.reduce<DPSState>((values, dp) => {
+          values[dp] = null
+          return values
+        }, {})
+        this.log.debug(`Requesting device22 status for ${this.context.name}: ${statusDps.join(',')}`)
+        result = this._send({
+          data: { devId: this.context.id, uid: this.context.id, t, dps },
+          cmd: 13,
+        })
+      } else {
+        result = this._send({
+          data: this._parent
+            ? modern
+              ? { cid: cid || this.context.id }
+              : { t, cid: cid || this.context.id }
+            : {
+                gwId: this.context.id,
+                devId: this.context.id,
+                uid: this.context.id,
+                t,
+              },
+          cmd: modern ? 16 : 10,
+        })
+      }
     }
 
     return result as boolean
+  }
+
+  private _getStatusDps(): string[] {
+    const configured = Array.isArray(this.context.statusDps) ? this.context.statusDps.map(String) : []
+    const available = configured.length > 0 ? configured : Object.keys(this.state)
+    return available.filter((dp) => /^\d+$/.test(dp))
   }
 
   querySubdevices(): boolean {
