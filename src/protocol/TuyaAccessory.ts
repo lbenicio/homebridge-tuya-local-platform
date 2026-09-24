@@ -668,11 +668,14 @@ class TuyaAccessory extends EventEmitter {
           }
           const dps = payload.dps || payload.data?.dps
           if (dps)
-            this._changePayload({
-              cid: payload.cid || payload.data?.cid,
-              devId: payload.devId || payload.data?.devid,
-              dps,
-            })
+            this._changePayload(
+              {
+                cid: payload.cid || payload.data?.cid,
+                devId: payload.devId || payload.data?.devid,
+                dps,
+              },
+              { repeatWirelessEvents: true },
+            )
         }
         this.emit('payload', parsedPayload)
         break
@@ -876,22 +879,25 @@ class TuyaAccessory extends EventEmitter {
     this.log.debug(message)
   }
 
-  private _changePayload(payload: {
-    dps?: DPSState
-    cid?: string
-    devId?: string
-    data?: { cid?: string; dps?: DPSState }
-  }): void {
+  private _changePayload(
+    payload: {
+      dps?: DPSState
+      cid?: string
+      devId?: string
+      data?: { cid?: string; dps?: DPSState }
+    },
+    options: { repeatWirelessEvents?: boolean } = {},
+  ): void {
     if (!payload.dps) return
 
     const childKey = payload.cid || payload.data?.cid || payload.devId
     const child = childKey ? this._children.get(String(childKey)) : undefined
-    if (child) return child._change(payload.dps)
+    if (child) return child._change(payload.dps, options.repeatWirelessEvents)
 
-    this._change(payload.dps)
+    this._change(payload.dps, options.repeatWirelessEvents)
   }
 
-  private _change(data: DPSState): void {
+  private _change(data: DPSState, repeatWirelessEvents = false): void {
     if (!isNonEmptyPlainObject(data)) return
 
     // A valid state payload is the first thing that proves the device is actually
@@ -899,9 +905,10 @@ class TuyaAccessory extends EventEmitter {
     this._reportReachable()
 
     const changes: DPSState = {}
-    const repeatWirelessEvents = (this.context.type || '').toLowerCase() === 'wirelessswitch'
+    const shouldRepeatWirelessEvents =
+      repeatWirelessEvents && (this.context.type || '').toLowerCase() === 'wirelessswitch'
     Object.keys(data).forEach((key) => {
-      if (data[key] !== this.state[key] || repeatWirelessEvents) {
+      if (data[key] !== this.state[key] || shouldRepeatWirelessEvents) {
         changes[key] = data[key]
       }
     })

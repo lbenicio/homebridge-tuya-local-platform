@@ -298,10 +298,20 @@ describe('TuyaAccessory', () => {
       const accessory = new TuyaAccessory(makeProps({ type: 'WirelessSwitch', connect: false }) as any)
       const change = vi.fn()
       accessory.on('change', change)
+      ;(accessory as any)._change({ '1': 'single_click' }, true)
+      ;(accessory as any)._change({ '1': 'single_click' }, true)
+
+      expect(change).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not emit unchanged wireless state snapshots', () => {
+      const accessory = new TuyaAccessory(makeProps({ type: 'WirelessSwitch', connect: false }) as any)
+      const change = vi.fn()
+      accessory.on('change', change)
       ;(accessory as any)._change({ '1': 'single_click' })
       ;(accessory as any)._change({ '1': 'single_click' })
 
-      expect(change).toHaveBeenCalledTimes(2)
+      expect(change).toHaveBeenCalledTimes(1)
     })
   })
 
